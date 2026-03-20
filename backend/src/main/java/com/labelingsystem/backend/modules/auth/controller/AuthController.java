@@ -1,16 +1,16 @@
 package com.labelingsystem.backend.modules.auth.controller;
 
-import com.labelingsystem.backend.core.security.JwtUtils;
-import com.labelingsystem.backend.modules.auth.dto.JwtResponse;
-import com.labelingsystem.backend.modules.auth.dto.LoginRequest;
-import com.labelingsystem.backend.modules.auth.dto.MessageResponse;
-import com.labelingsystem.backend.modules.auth.dto.SignupRequest;
-import com.labelingsystem.backend.modules.user.entity.ERole;
+import com.labelingsystem.backend.security.jwt.JwtTokenProvider;
+import com.labelingsystem.backend.modules.auth.dto.request.LoginRequest;
+import com.labelingsystem.backend.modules.auth.dto.request.SignupRequest;
+import com.labelingsystem.backend.modules.auth.dto.response.JwtResponse;
+import com.labelingsystem.backend.modules.auth.dto.response.MessageResponse;
+import com.labelingsystem.backend.common.enums.RoleType;
 import com.labelingsystem.backend.modules.user.entity.Role;
 import com.labelingsystem.backend.modules.user.entity.User;
 import com.labelingsystem.backend.modules.user.repository.RoleRepository;
 import com.labelingsystem.backend.modules.user.repository.UserRepository;
-import com.labelingsystem.backend.modules.user.service.UserDetailsImpl;
+import com.labelingsystem.backend.security.service.UserDetailsImpl;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -36,7 +36,7 @@ public class AuthController {
     @Autowired UserRepository userRepository;
     @Autowired RoleRepository roleRepository;
     @Autowired PasswordEncoder encoder;
-    @Autowired JwtUtils jwtUtils;
+    @Autowired JwtTokenProvider jwtUtils;
 
     // API: LOGIN
     @PostMapping("/login")
@@ -92,29 +92,29 @@ public class AuthController {
         Set<Role> roles = new HashSet<>();
 
         if (strRoles == null) {
-            Role userRole = roleRepository.findByName(ERole.ANNOTATOR)
+            Role userRole = roleRepository.findByName(RoleType.ANNOTATOR)
                     .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
             roles.add(userRole);
         } else {
             strRoles.forEach(role -> {
                 switch (role.toLowerCase()) {
                     case "admin":
-                        Role adminRole = roleRepository.findByName(ERole.ADMIN)
+                        Role adminRole = roleRepository.findByName(RoleType.ADMIN)
                                 .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
                         roles.add(adminRole);
                         break;
                     case "manager":
-                        Role managerRole = roleRepository.findByName(ERole.MANAGER)
+                        Role managerRole = roleRepository.findByName(RoleType.MANAGER)
                                 .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
                         roles.add(managerRole);
                         break;
                     case "reviewer":
-                        Role reviewerRole = roleRepository.findByName(ERole.REVIEWER)
+                        Role reviewerRole = roleRepository.findByName(RoleType.REVIEWER)
                                 .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
                         roles.add(reviewerRole);
                         break;
                     default:
-                        Role defaultRole = roleRepository.findByName(ERole.ANNOTATOR)
+                        Role defaultRole = roleRepository.findByName(RoleType.ANNOTATOR)
                                 .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
                         roles.add(defaultRole);
                 }

@@ -1,6 +1,8 @@
-package com.labelingsystem.backend.core.security;
+package com.labelingsystem.backend.config;
 
-import com.labelingsystem.backend.modules.user.service.UserDetailsServiceImpl;
+import com.labelingsystem.backend.security.service.CustomUserDetailsService;
+import com.labelingsystem.backend.security.entrypoint.JwtAuthEntryPointJwt;
+import com.labelingsystem.backend.security.filter.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,22 +21,22 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-public class WebSecurityConfig {
+public class SecurityConfig {
 
-    @Autowired UserDetailsServiceImpl userDetailsService;
-    @Autowired AuthEntryPointJwt unauthorizedHandler;
+    @Autowired CustomUserDetailsService customUserDetailsService;
+    @Autowired JwtAuthEntryPointJwt unauthorizedHandler;
 
     // Initialize the "Ticket Inspector"
     @Bean
-    public AuthTokenFilter authenticationJwtTokenFilter() {
-        return new AuthTokenFilter();
+    public JwtAuthenticationFilter authenticationJwtTokenFilter() {
+        return new JwtAuthenticationFilter();
     }
 
     // Configure Authentication Provider (Uses our UserDetailsService and PasswordEncoder)
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
+        authProvider.setUserDetailsService(customUserDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
     }

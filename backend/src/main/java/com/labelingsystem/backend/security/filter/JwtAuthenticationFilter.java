@@ -1,6 +1,7 @@
-package com.labelingsystem.backend.core.security;
+package com.labelingsystem.backend.security.filter;
 
-import com.labelingsystem.backend.modules.user.service.UserDetailsServiceImpl;
+import com.labelingsystem.backend.security.service.CustomUserDetailsService;
+import com.labelingsystem.backend.security.jwt.JwtTokenProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,12 +18,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-public class AuthTokenFilter extends OncePerRequestFilter {
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    @Autowired private JwtUtils jwtUtils;
-    @Autowired private UserDetailsServiceImpl userDetailsService;
+    @Autowired private JwtTokenProvider jwtUtils;
+    @Autowired private CustomUserDetailsService customUserDetailsService;
 
-    private static final Logger logger = LoggerFactory.getLogger(AuthTokenFilter.class);
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -34,7 +35,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                 
                 String username = jwtUtils.getUserNameFromJwtToken(jwt);
 
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
                 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(

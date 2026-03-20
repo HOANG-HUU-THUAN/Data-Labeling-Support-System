@@ -1,4 +1,4 @@
-package com.labelingsystem.backend.core.security;
+package com.labelingsystem.backend.security.jwt;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
@@ -14,8 +14,8 @@ import java.security.Key;
 import java.util.Date;
 
 @Component
-public class JwtUtils {
-    private static final Logger logger = LoggerFactory.getLogger(JwtUtils.class);
+public class JwtTokenProvider {
+    private static final Logger logger = LoggerFactory.getLogger(JwtTokenProvider.class);
 
     @Value("${app.jwtSecret}")
     private String jwtSecret;

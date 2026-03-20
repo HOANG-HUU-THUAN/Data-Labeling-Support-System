@@ -1,4 +1,4 @@
-package com.labelingsystem.backend.modules.auth.dto;
+package com.labelingsystem.backend.modules.auth.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -1,4 +1,4 @@
-package com.labelingsystem.backend.modules.user.service;
+package com.labelingsystem.backend.security.service;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.labelingsystem.backend.modules.user.entity.User;

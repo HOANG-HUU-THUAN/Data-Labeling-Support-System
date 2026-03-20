@@ -1,4 +1,4 @@
-package com.labelingsystem.backend.modules.user.service;
+package com.labelingsystem.backend.security.service;
 
 import com.labelingsystem.backend.modules.user.entity.User;
 import com.labelingsystem.backend.modules.user.repository.UserRepository;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class UserDetailsServiceImpl implements UserDetailsService {
+public class CustomUserDetailsService implements UserDetailsService {
 
     @Autowired
     UserRepository userRepository;

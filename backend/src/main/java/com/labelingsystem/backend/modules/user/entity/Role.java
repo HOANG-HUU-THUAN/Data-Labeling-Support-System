@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import com.labelingsystem.backend.common.enums.RoleType;
+
 @Entity
 @Table(name = "roles")
 @Data
@@ -17,5 +19,5 @@ public class Role {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20, unique = true, nullable = false)
-    private ERole name;
+    private RoleType name;
 }

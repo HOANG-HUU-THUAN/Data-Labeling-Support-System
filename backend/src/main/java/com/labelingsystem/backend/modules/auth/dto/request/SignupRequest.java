@@ -1,4 +1,4 @@
-package com.labelingsystem.backend.modules.auth.dto;
+package com.labelingsystem.backend.modules.auth.dto.request;
 
 import lombok.Data;
 import java.util.Set;
