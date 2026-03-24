@@ -28,3 +28,19 @@ export const createLabel = (
       resolve(newLabel);
     }, 300)
   );
+
+export const updateLabel = (
+  id: number,
+  data: Pick<Label, 'name' | 'color'>
+): Promise<Label> =>
+  new Promise((resolve, reject) =>
+    setTimeout(() => {
+      const index = labels.findIndex((l) => l.id === id);
+      if (index === -1) {
+        reject(new Error('Không tìm thấy nhãn'));
+        return;
+      }
+      labels[index] = { ...labels[index], ...data };
+      resolve(labels[index]);
+    }, 300)
+  );

@@ -5,7 +5,7 @@ import {
   DialogTitle, Divider, Paper, Stack, TextField, Typography,
 } from '@mui/material';
 import { getProjectById, deleteProject } from '../mock/projectMock';
-import { getLabelsByProject, createLabel } from '../mock/labelMock';
+import { getLabelsByProject, createLabel, updateLabel } from '../mock/labelMock';
 import type { Project } from '../types/project';
 import type { Label } from '../types/label';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -20,11 +20,26 @@ export default function ProjectDetail() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Add label modal state
+  // Add/edit label modal state
   const [labelModalOpen, setLabelModalOpen] = useState(false);
+  const [editingLabel, setEditingLabel] = useState<Label | null>(null);
   const [labelName, setLabelName] = useState('');
   const [labelColor, setLabelColor] = useState('#1e88e5');
   const [savingLabel, setSavingLabel] = useState(false);
+
+  const openCreateModal = () => {
+    setEditingLabel(null);
+    setLabelName('');
+    setLabelColor('#1e88e5');
+    setLabelModalOpen(true);
+  };
+
+  const openEditModal = (label: Label) => {
+    setEditingLabel(label);
+    setLabelName(label.name);
+    setLabelColor(label.color);
+    setLabelModalOpen(true);
+  };
 
   const reloadLabels = () =>
     getLabelsByProject(Number(id)).then(setLabels);
@@ -54,10 +69,12 @@ export default function ProjectDetail() {
     e.preventDefault();
     setSavingLabel(true);
     try {
-      await createLabel({ name: labelName, color: labelColor, projectId: Number(id) });
+      if (editingLabel) {
+        await updateLabel(editingLabel.id, { name: labelName, color: labelColor });
+      } else {
+        await createLabel({ name: labelName, color: labelColor, projectId: Number(id) });
+      }
       setLabelModalOpen(false);
-      setLabelName('');
-      setLabelColor('#1e88e5');
       await reloadLabels();
     } finally {
       setSavingLabel(false);
@@ -114,7 +131,7 @@ export default function ProjectDetail() {
           <Typography variant="overline" color="text.secondary">
             Danh sách nhãn
           </Typography>
-          <Button size="small" variant="outlined" onClick={() => setLabelModalOpen(true)}>
+          <Button size="small" variant="outlined" onClick={openCreateModal}>
             + Thêm nhãn
           </Button>
         </Stack>
@@ -126,16 +143,17 @@ export default function ProjectDetail() {
               <Chip
                 key={label.id}
                 label={label.name}
-                sx={{ backgroundColor: label.color, color: '#fff', fontWeight: 500 }}
+                onClick={() => openEditModal(label)}
+                sx={{ backgroundColor: label.color, color: '#fff', fontWeight: 500, cursor: 'pointer' }}
               />
             ))}
           </Stack>
         )}
       </Paper>
 
-      {/* ADD LABEL MODAL */}
+      {/* ADD / EDIT LABEL MODAL */}
       <Dialog open={labelModalOpen} onClose={() => setLabelModalOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Thêm nhãn</DialogTitle>
+        <DialogTitle>{editingLabel ? 'Chỉnh sửa nhãn' : 'Thêm nhãn'}</DialogTitle>
         <Box component="form" onSubmit={handleCreateLabel}>
           <DialogContent>
             <TextField
@@ -164,7 +182,7 @@ export default function ProjectDetail() {
               Hủy
             </Button>
             <Button type="submit" variant="contained" disabled={savingLabel}>
-              {savingLabel ? <CircularProgress size={20} color="inherit" /> : 'Tạo'}
+              {savingLabel ? <CircularProgress size={20} color="inherit" /> : editingLabel ? 'Cập nhật' : 'Tạo'}
             </Button>
           </DialogActions>
         </Box>
