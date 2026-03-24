@@ -15,4 +15,7 @@ export interface Project {
   name: string;
   description: string;
   type?: string;
+  createdDate?: string | Date;
+  status?: string;
+  itemCount?: number;
 }

@@ -1,4 +1,4 @@
-import { create, type StateCreator, type SetState, type GetState } from 'zustand';
+import { create, type SetState, type GetState } from 'zustand';
 import type { Project } from '../types/project';
 import * as projectApi from '../api/projectApi';
 
@@ -33,7 +33,7 @@ interface ProjectState {
  * Project Store - Quản lý trạng thái dự án
  * Sử dụng Zustand để quản lý state một cách đơn giản và hiệu quả
  */
-const useProjectStore = create<ProjectState>((set, get) => ({
+const useProjectStore = create<ProjectState>((set: SetState<ProjectState>, get: GetState<ProjectState>) => ({
   projects: [],
   loading: false,
   error: null,

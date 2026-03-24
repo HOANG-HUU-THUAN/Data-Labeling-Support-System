@@ -1,10 +1,35 @@
 import type { Project } from '../types/project';
+import { ProjectType } from '../types/project';
 
 // Dữ liệu mock — mutable để simulate update trong session
 let projects: Project[] = [
-  { id: 1, name: 'Project A', description: 'Dự án gán nhãn ảnh y tế' },
-  { id: 2, name: 'Project B', description: 'Dự án phân loại văn bản' },
-  { id: 3, name: 'Project C', description: 'Dự án nhận diện đối tượng' },
+  {
+    id: 1,
+    name: 'Project A',
+    description: 'Dự án gán nhãn ảnh y tế để phát hiện các bất thường',
+    type: ProjectType.OBJECT_DETECTION,
+    createdDate: new Date('2024-01-15'),
+    status: 'Đang hoạt động',
+    itemCount: 150,
+  },
+  {
+    id: 2,
+    name: 'Project B',
+    description: 'Dự án phân loại văn bản tin tức vào các chủ đề',
+    type: ProjectType.IMAGE_CLASSIFICATION,
+    createdDate: new Date('2024-02-10'),
+    status: 'Đang hoạt động',
+    itemCount: 500,
+  },
+  {
+    id: 3,
+    name: 'Project C',
+    description: 'Dự án nhận diện đối tượng trong ảnh tế bào',
+    type: ProjectType.SEGMENTATION,
+    createdDate: new Date('2024-03-05'),
+    status: 'Đang hoạt động',
+    itemCount: 300,
+  },
 ];
 
 export const getProjects = (): Promise<Project[]> =>
@@ -16,12 +41,20 @@ export const getProjectById = (id: number): Promise<Project | undefined> =>
   );
 
 export const createProject = (
-  data: Pick<Project, 'name' | 'description'>
+  data: { name: string; description: string; type?: string }
 ): Promise<Project> =>
   new Promise((resolve) =>
     setTimeout(() => {
       const newId = projects.length > 0 ? Math.max(...projects.map((p) => p.id)) + 1 : 1;
-      const newProject: Project = { id: newId, ...data };
+      const newProject: Project = {
+        id: newId,
+        name: data.name,
+        description: data.description,
+        type: data.type,
+        createdDate: new Date(),
+        status: 'Đang hoạt động',
+        itemCount: 0,
+      };
       projects.push(newProject);
       resolve(newProject);
     }, 300)
@@ -29,7 +62,7 @@ export const createProject = (
 
 export const updateProject = (
   id: number,
-  data: Pick<Project, 'name' | 'description'>
+  data: Partial<Project>
 ): Promise<Project> =>
   new Promise((resolve, reject) =>
     setTimeout(() => {

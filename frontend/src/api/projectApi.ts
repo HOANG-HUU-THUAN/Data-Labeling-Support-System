@@ -1,5 +1,6 @@
 // import axiosInstance from './axios';
 import type { Project } from '../types/project';
+import * as projectMock from '../mock/projectMock';
 
 /**
  * API - Tạo dự án mới
@@ -14,16 +15,7 @@ export const createProject = (data: {
   // TODO: Thay bằng API thực khi backend sẵn sàng
   // return axiosInstance.post('/projects', data);
   
-  // Hiện tại sử dụng mock
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const newProject: Project = {
-        id: Math.floor(Math.random() * 10000),
-        ...data,
-      };
-      resolve(newProject);
-    }, 500);
-  });
+  return projectMock.createProject(data as any);
 };
 
 /**
@@ -34,12 +26,7 @@ export const getProjects = (): Promise<Project[]> => {
   // TODO: Thay bằng API thực khi backend sẵn sàng
   // return axiosInstance.get('/projects');
   
-  // Hiện tại sử dụng mock
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([]);
-    }, 300);
-  });
+  return projectMock.getProjects();
 };
 
 /**
@@ -47,15 +34,21 @@ export const getProjects = (): Promise<Project[]> => {
  * @param id - ID dự án
  * @returns Promise<Project> - Chi tiết dự án
  */
-export const getProjectById = (_id: number): Promise<Project> => {
+export const getProjectById = (id: number): Promise<Project> => {
   // TODO: Thay bằng API thực khi backend sẵn sàng
   // return axiosInstance.get(`/projects/${id}`);
   
-  // Hiện tại sử dụng mock
-  return new Promise((_resolve, reject) => {
-    setTimeout(() => {
-      reject(new Error('Không tìm thấy dự án'));
-    }, 300);
+  return new Promise(async (resolve, reject) => {
+    try {
+      const project = await projectMock.getProjectById(id);
+      if (!project) {
+        reject(new Error('Không tìm thấy dự án'));
+      } else {
+        resolve(project);
+      }
+    } catch (error) {
+      reject(error);
+    }
   });
 };
 
@@ -66,18 +59,13 @@ export const getProjectById = (_id: number): Promise<Project> => {
  * @returns Promise<Project> - Dự án sau khi cập nhật
  */
 export const updateProject = (
-  _id: number,
-  _data: Partial<Project>
+  id: number,
+  data: Partial<Project>
 ): Promise<Project> => {
   // TODO: Thay bằng API thực khi backend sẵn sàng
   // return axiosInstance.put(`/projects/${id}`, data);
   
-  // Hiện tại sử dụng mock
-  return new Promise((_resolve, reject) => {
-    setTimeout(() => {
-      reject(new Error('Cập nhật thất bại'));
-    }, 300);
-  });
+  return projectMock.updateProject(id, data);
 };
 
 /**
@@ -85,14 +73,9 @@ export const updateProject = (
  * @param id - ID dự án
  * @returns Promise<void>
  */
-export const deleteProject = (_id: number): Promise<void> => {
+export const deleteProject = (id: number): Promise<void> => {
   // TODO: Thay bằng API thực khi backend sẵn sàng
   // return axiosInstance.delete(`/projects/${id}`);
   
-  // Hiện tại sử dụng mock
-  return new Promise((_resolve, reject) => {
-    setTimeout(() => {
-      reject(new Error('Xóa thất bại'));
-    }, 300);
-  });
+  return projectMock.deleteProject(id);
 };
