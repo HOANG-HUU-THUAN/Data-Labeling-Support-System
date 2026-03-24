@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, Button, CircularProgress, Divider, Paper, Stack, Typography } from '@mui/material';
+import { Box, Button, Chip, CircularProgress, Divider, Paper, Stack, Typography } from '@mui/material';
 import { getProjectById, deleteProject } from '../mock/projectMock';
+import { getLabelsByProject } from '../mock/labelMock';
 import type { Project } from '../types/project';
+import type { Label } from '../types/label';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function ProjectDetail() {
@@ -10,14 +12,20 @@ export default function ProjectDetail() {
   const navigate = useNavigate();
 
   const [project, setProject] = useState<Project | null>(null);
+  const [labels, setLabels] = useState<Label[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    getProjectById(Number(id))
-      .then((data) => setProject(data ?? null))
-      .finally(() => setLoading(false));
+    const projectId = Number(id);
+    Promise.all([
+      getProjectById(projectId),
+      getLabelsByProject(projectId),
+    ]).then(([projectData, labelData]) => {
+      setProject(projectData ?? null);
+      setLabels(labelData);
+    }).finally(() => setLoading(false));
   }, [id]);
 
   const handleDeleteConfirm = async () => {
@@ -72,6 +80,30 @@ export default function ProjectDetail() {
 
         <Typography variant="overline" color="text.secondary">Mô tả</Typography>
         <Typography>{project.description}</Typography>
+      </Paper>
+
+      {/* LABEL LIST */}
+      <Paper variant="outlined" sx={{ p: 3, mt: 3 }}>
+        <Typography variant="overline" color="text.secondary" display="block" mb={1}>
+          Danh sách nhãn
+        </Typography>
+        {labels.length === 0 ? (
+          <Typography color="text.secondary" variant="body2">Chưa có nhãn</Typography>
+        ) : (
+          <Stack direction="row" flexWrap="wrap" gap={1}>
+            {labels.map((label) => (
+              <Chip
+                key={label.id}
+                label={label.name}
+                sx={{
+                  backgroundColor: label.color,
+                  color: '#fff',
+                  fontWeight: 500,
+                }}
+              />
+            ))}
+          </Stack>
+        )}
       </Paper>
 
       <ConfirmDialog
