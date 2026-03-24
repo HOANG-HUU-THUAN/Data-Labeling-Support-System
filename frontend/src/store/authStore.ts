@@ -8,13 +8,10 @@ interface AuthState {
   logout: () => void;
 }
 
-// Khi app load: khôi phục token từ localStorage
-// Nếu có token, tạo mock user tạm để app không bị "logged out"
-// TODO: thay bằng API /auth/me khi backend sẵn sàng
+// Khôi phục session từ localStorage khi app load
 const savedToken = localStorage.getItem('token');
-const restoredUser: User | null = savedToken
-  ? { id: 0, name: 'Người dùng', email: '', role: 'ANNOTATOR' }
-  : null;
+const savedUserRaw = localStorage.getItem('user');
+const restoredUser: User | null = savedUserRaw ? (JSON.parse(savedUserRaw) as User) : null;
 
 const useAuthStore = create<AuthState>((set) => ({
   token: savedToken,
@@ -22,11 +19,14 @@ const useAuthStore = create<AuthState>((set) => ({
 
   login: (token, user) => {
     localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    console.debug('[AuthStore] Logged in as:', user.email, '| Role:', user.role);
     set({ token, user });
   },
 
   logout: () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     set({ token: null, user: null });
   },
 }));
