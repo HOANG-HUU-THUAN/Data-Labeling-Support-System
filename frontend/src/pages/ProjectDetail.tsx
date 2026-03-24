@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Button, CircularProgress, Divider, Paper, Stack, Typography } from '@mui/material';
-import { getProjectById } from '../mock/projectMock';
+import { getProjectById, deleteProject } from '../mock/projectMock';
 import type { Project } from '../types/project';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -10,12 +11,24 @@ export default function ProjectDetail() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     getProjectById(Number(id))
       .then((data) => setProject(data ?? null))
       .finally(() => setLoading(false));
   }, [id]);
+
+  const handleDeleteConfirm = async () => {
+    setDeleting(true);
+    try {
+      await deleteProject(Number(id));
+      navigate('/projects');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -42,6 +55,9 @@ export default function ProjectDetail() {
           <Button variant="contained" onClick={() => navigate(`/projects/${id}/edit`)}>
             Chỉnh sửa
           </Button>
+          <Button variant="outlined" color="error" onClick={() => setDialogOpen(true)}>
+            Xóa dự án
+          </Button>
         </Stack>
       </Stack>
 
@@ -57,6 +73,16 @@ export default function ProjectDetail() {
         <Typography variant="overline" color="text.secondary">Mô tả</Typography>
         <Typography>{project.description}</Typography>
       </Paper>
+
+      <ConfirmDialog
+        open={dialogOpen}
+        title="Xác nhận xóa"
+        content={`Bạn có chắc muốn xóa dự án "${project.name}" không?`}
+        confirmLabel="Xóa"
+        loading={deleting}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDialogOpen(false)}
+      />
     </Box>
   );
 }
