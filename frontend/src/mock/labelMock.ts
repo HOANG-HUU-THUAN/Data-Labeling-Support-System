@@ -16,3 +16,15 @@ export const getLabelsByProject = (projectId: number): Promise<Label[]> =>
   new Promise((resolve) =>
     setTimeout(() => resolve(labels.filter((l) => l.projectId === projectId)), 300)
   );
+
+export const createLabel = (
+  data: Pick<Label, 'name' | 'color' | 'projectId'>
+): Promise<Label> =>
+  new Promise((resolve) =>
+    setTimeout(() => {
+      const newId = labels.length > 0 ? Math.max(...labels.map((l) => l.id)) + 1 : 1;
+      const newLabel: Label = { id: newId, ...data };
+      labels.push(newLabel);
+      resolve(newLabel);
+    }, 300)
+  );
