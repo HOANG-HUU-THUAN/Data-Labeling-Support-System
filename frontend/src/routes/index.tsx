@@ -14,7 +14,7 @@ import MyTasksPage from '../pages/MyTasksPage';
 import AnnotationPage from '../pages/AnnotationPage';
 import ReviewPage from '../pages/ReviewPage';
 import ProjectList from '../pages/ProjectListPage';
-import ProjectCreate from '../pages/ProjectCreate';
+import ProjectCreatePage from '../pages/projects/ProjectCreatePage';
 import ProjectDetail from '../pages/ProjectDetail';
 import ProjectEditPage from '../pages/ProjectEditPage';
 
@@ -37,7 +37,8 @@ const AppRoutes = () => {
 
       {/* MANAGER only */}
       <Route path="/projects" element={<ProtectedRoute roles={['ADMIN', 'MANAGER', 'ANNOTATOR']}>{withLayout(<ProjectList />)}</ProtectedRoute>} />
-      <Route path="/projects/create" element={<ProtectedRoute roles={['ADMIN', 'MANAGER', 'ANNOTATOR']}>{withLayout(<ProjectCreate />)}</ProtectedRoute>} />
+      <Route path="/projects/create" element={<ProtectedRoute roles={['ADMIN', 'MANAGER', 'ANNOTATOR']}>{withLayout(<ProjectCreatePage />)}</ProtectedRoute>} />
+      <Route path="/projects/new" element={<ProtectedRoute roles={['ADMIN', 'MANAGER', 'ANNOTATOR']}>{withLayout(<ProjectCreatePage />)}</ProtectedRoute>} />
       <Route path="/projects/:id/edit" element={<ProtectedRoute roles={['ADMIN', 'MANAGER', 'ANNOTATOR']}>{withLayout(<ProjectEditPage />)}</ProtectedRoute>} />
       <Route path="/projects/:id" element={<ProtectedRoute roles={['ADMIN', 'MANAGER', 'ANNOTATOR']}>{withLayout(<ProjectDetail />)}</ProtectedRoute>} />
       <Route path="/datasets" element={<ProtectedRoute roles={['ADMIN', 'MANAGER']}>{withLayout(<DatasetsPage />)}</ProtectedRoute>} />

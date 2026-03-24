@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ProjectCard from '@/components/project/ProjectCard';
-import { useProjectStore } from '@/stores/projectStore';
+import { useProjectStore } from '@/store/projectStore';
 
 /**
  * ProjectsPage Component
