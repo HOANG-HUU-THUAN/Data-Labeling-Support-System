@@ -14,11 +14,14 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       <Box
         component="main"
         sx={{
+          
           flexGrow: 1,
           ml: `${SIDEBAR_WIDTH}px`,
           p: 3,
           minHeight: '100vh',
           backgroundColor: 'background.default',
+          maxWidth: '1200px',   // giới hạn chiều rộng
+          mx: 'auto',           // căn giữa theo chiều ngang
         }}
       >
         {/* Spacer để tránh content bị che bởi Topbar */}

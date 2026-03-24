@@ -1,69 +1,61 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Box, Button, CircularProgress, Paper, Stack, TextField, Typography } from '@mui/material';
+import { createProject } from '../mock/projectMock';
 
 export default function ProjectCreate() {
   const navigate = useNavigate();
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    console.log({
-      name,
-      description,
-    });
-
-    // giả lập tạo xong → quay về list
-    navigate("/projects");
+    setSaving(true);
+    try {
+      await createProject({ name, description });
+      navigate('/projects');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <div className="p-6 max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Create Project</h1>
+    <Box maxWidth={600}>
+      <Typography variant="h5" fontWeight="bold" mb={3}>
+        Tạo dự án
+      </Typography>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* NAME */}
-        <div>
-          <label className="block mb-1 font-medium">Project Name</label>
-          <input
+      <Paper variant="outlined" sx={{ p: 3 }}>
+        <Box component="form" onSubmit={handleSubmit}>
+          <TextField
+            fullWidth
+            label="Tên dự án"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full border p-2 rounded-lg"
-            placeholder="Enter project name"
+            required
+            margin="normal"
           />
-        </div>
-
-        {/* DESCRIPTION */}
-        <div>
-          <label className="block mb-1 font-medium">Description</label>
-          <textarea
+          <TextField
+            fullWidth
+            label="Mô tả"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full border p-2 rounded-lg"
-            placeholder="Enter description"
+            multiline
+            minRows={4}
+            margin="normal"
           />
-        </div>
-
-        {/* BUTTON */}
-        <div className="flex gap-3">
-          <button
-            type="submit"
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg"
-          >
-            Create
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate("/projects")}
-            className="bg-gray-300 px-4 py-2 rounded-lg"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
+          <Stack direction="row" spacing={2} mt={3}>
+            <Button type="submit" variant="contained" disabled={saving}>
+              {saving ? <CircularProgress size={22} color="inherit" /> : 'Tạo'}
+            </Button>
+            <Button variant="outlined" onClick={() => navigate('/projects')} disabled={saving}>
+              Hủy
+            </Button>
+          </Stack>
+        </Box>
+      </Paper>
+    </Box>
   );
 }
