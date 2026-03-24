@@ -15,16 +15,11 @@ import {
   Alert,
   Grid,
   Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useProjectStore } from '../../store/projectStore';
+import ProjectDeleteButton from '../../components/project/ProjectDeleteButton';
 import { ProjectType } from '../../types/project';
 
 /**
@@ -106,9 +101,6 @@ const ProjectDetailPage: React.FC = () => {
   // State tabs
   const [tabValue, setTabValue] = useState<number>(0);
 
-  // State dialog xác nhận xóa
-  const [openDeleteDialog, setOpenDeleteDialog] = useState<boolean>(false);
-
   // Lấy dữ liệu dự án từ store
   const projectId = id ? parseInt(id, 10) : null;
   const project = projectId ? projects.find((p: any) => p.id === projectId) : null;
@@ -140,30 +132,11 @@ const ProjectDetailPage: React.FC = () => {
   };
 
   /**
-   * Handler: Click nút Delete
-   * Mở dialog xác nhận
+   * Handler: Callback khi xóa dự án thành công
    */
-  const handleDeleteClick = () => {
-    setOpenDeleteDialog(true);
-  };
-
-  /**
-   * Handler: Xác nhận xóa dự án
-   * TODO: Gọi API xóa dự án từ store
-   */
-  const handleConfirmDelete = () => {
-    setOpenDeleteDialog(false);
-    // TODO: Gọi removeProject từ store
-    // await removeProject(projectId);
-    // navigate('/projects');
-    console.log('Xóa dự án:', projectId);
-  };
-
-  /**
-   * Handler: Hủy xóa
-   */
-  const handleCancelDelete = () => {
-    setOpenDeleteDialog(false);
+  const handleDeleteSuccess = () => {
+    console.log('Dự án đã được xóa thành công');
+    // Navigate sẽ được handled bởi ProjectDeleteButton
   };
 
   /**
@@ -251,18 +224,14 @@ const ProjectDetailPage: React.FC = () => {
             >
               Chỉnh sửa
             </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              startIcon={<DeleteIcon />}
-              onClick={handleDeleteClick}
-              sx={{
-                textTransform: 'none',
-                padding: '10px 16px',
-              }}
-            >
-              Xóa
-            </Button>
+            {projectId && (
+              <ProjectDeleteButton
+                projectId={projectId}
+                projectName={project.name}
+                onSuccess={handleDeleteSuccess}
+                variant="outlined"
+              />
+            )}
           </Stack>
         </Box>
       </Box>
@@ -449,30 +418,7 @@ const ProjectDetailPage: React.FC = () => {
         </Box>
       </Paper>
 
-      {/* Dialog xác nhận xóa */}
-      <Dialog
-        open={openDeleteDialog}
-        onClose={handleCancelDelete}
-        aria-labelledby="delete-dialog-title"
-        aria-describedby="delete-dialog-description"
-      >
-        <DialogTitle id="delete-dialog-title">
-          Xóa dự án "{project.name}"?
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText id="delete-dialog-description">
-            Bạn có chắc chắn muốn xóa dự án này không? Hành động này không thể hoàn tác.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelDelete} variant="outlined">
-            Hủy
-          </Button>
-          <Button onClick={handleConfirmDelete} variant="contained" color="error">
-            Xóa
-          </Button>
-        </DialogActions>
-      </Dialog>
+
     </Container>
   );
 };
