@@ -1,8 +1,10 @@
+export type Role = 'ADMIN' | 'MANAGER' | 'ANNOTATOR' | 'REVIEWER';
+
 export interface User {
   id: number;
   name: string;
   email: string;
-  role: 'ADMIN' | 'MANAGER' | 'ANNOTATOR' | 'REVIEWER';
+  role: Role;
 }
 
 export interface LoginResponse {

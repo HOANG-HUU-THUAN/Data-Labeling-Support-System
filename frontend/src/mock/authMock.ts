@@ -5,12 +5,28 @@ const MOCK_USERS: Record<string, { password: string; response: LoginResponse }> 
     password: '123456',
     response: {
       token: 'mock-jwt-token-admin-123456',
-      user: {
-        id: 1,
-        name: 'Admin',
-        email: 'admin@gmail.com',
-        role: 'ADMIN',
-      },
+      user: { id: 1, name: 'Admin', email: 'admin@gmail.com', role: 'ADMIN' },
+    },
+  },
+  'manager@gmail.com': {
+    password: '123456',
+    response: {
+      token: 'mock-jwt-token-manager-123456',
+      user: { id: 2, name: 'Manager', email: 'manager@gmail.com', role: 'MANAGER' },
+    },
+  },
+  'annotator@gmail.com': {
+    password: '123456',
+    response: {
+      token: 'mock-jwt-token-annotator-123456',
+      user: { id: 3, name: 'Annotator', email: 'annotator@gmail.com', role: 'ANNOTATOR' },
+    },
+  },
+  'reviewer@gmail.com': {
+    password: '123456',
+    response: {
+      token: 'mock-jwt-token-reviewer-123456',
+      user: { id: 4, name: 'Reviewer', email: 'reviewer@gmail.com', role: 'REVIEWER' },
     },
   },
 };

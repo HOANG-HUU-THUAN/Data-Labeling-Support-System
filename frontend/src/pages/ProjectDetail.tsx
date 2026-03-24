@@ -1,37 +1,62 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Box, Button, CircularProgress, Divider, Paper, Stack, Typography } from '@mui/material';
+import { getProjectById } from '../mock/projectMock';
+import type { Project } from '../types/project';
 
 export default function ProjectDetail() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getProjectById(Number(id))
+      .then((data) => setProject(data ?? null))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" mt={6}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!project) {
+    return <Typography color="error">Không tìm thấy dự án.</Typography>;
+  }
+
   return (
-    <div className="p-6">
-      {/* HEADER */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Project Detail</h1>
+    <Box maxWidth={600}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h5" fontWeight="bold">
+          Chi tiết dự án
+        </Typography>
+        <Stack direction="row" spacing={1}>
+          <Button variant="outlined" onClick={() => navigate('/projects')}>
+            Quay lại
+          </Button>
+          <Button variant="contained" onClick={() => navigate(`/projects/${id}/edit`)}>
+            Chỉnh sửa
+          </Button>
+        </Stack>
+      </Stack>
 
-        <button
-          onClick={() => navigate("/projects")}
-          className="bg-gray-300 px-4 py-2 rounded-lg"
-        >
-          Back
-        </button>
-      </div>
+      <Paper variant="outlined" sx={{ p: 3 }}>
+        <Typography variant="overline" color="text.secondary">ID</Typography>
+        <Typography mb={2}>{project.id}</Typography>
+        <Divider sx={{ mb: 2 }} />
 
-      {/* CONTENT */}
-      <div className="border rounded-xl p-6 shadow">
-        <p className="mb-2">
-          <span className="font-semibold">Project ID:</span> {id}
-        </p>
+        <Typography variant="overline" color="text.secondary">Tên dự án</Typography>
+        <Typography mb={2}>{project.name}</Typography>
+        <Divider sx={{ mb: 2 }} />
 
-        <p className="mb-2">
-          <span className="font-semibold">Name:</span> Project {id}
-        </p>
-
-        <p>
-          <span className="font-semibold">Description:</span> Demo project detail
-        </p>
-      </div>
-    </div>
+        <Typography variant="overline" color="text.secondary">Mô tả</Typography>
+        <Typography>{project.description}</Typography>
+      </Paper>
+    </Box>
   );
 }
