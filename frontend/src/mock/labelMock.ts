@@ -44,3 +44,16 @@ export const updateLabel = (
       resolve(labels[index]);
     }, 300)
   );
+
+export const deleteLabel = (id: number): Promise<void> =>
+  new Promise((resolve, reject) =>
+    setTimeout(() => {
+      const index = labels.findIndex((l) => l.id === id);
+      if (index === -1) {
+        reject(new Error('Không tìm thấy nhãn'));
+        return;
+      }
+      labels.splice(index, 1);
+      resolve();
+    }, 300)
+  );

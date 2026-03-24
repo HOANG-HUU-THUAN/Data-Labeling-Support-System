@@ -5,7 +5,7 @@ import {
   DialogTitle, Divider, Paper, Stack, TextField, Typography,
 } from '@mui/material';
 import { getProjectById, deleteProject } from '../mock/projectMock';
-import { getLabelsByProject, createLabel, updateLabel } from '../mock/labelMock';
+import { getLabelsByProject, createLabel, updateLabel, deleteLabel } from '../mock/labelMock';
 import type { Project } from '../types/project';
 import type { Label } from '../types/label';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -81,6 +81,12 @@ export default function ProjectDetail() {
     }
   };
 
+  const handleDeleteLabel = async (label: Label) => {
+    if (!window.confirm(`Bạn có chắc muốn xóa nhãn "${label.name}" không?`)) return;
+    await deleteLabel(label.id);
+    await reloadLabels();
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" mt={6}>
@@ -144,6 +150,7 @@ export default function ProjectDetail() {
                 key={label.id}
                 label={label.name}
                 onClick={() => openEditModal(label)}
+                onDelete={() => handleDeleteLabel(label)}
                 sx={{ backgroundColor: label.color, color: '#fff', fontWeight: 500, cursor: 'pointer' }}
               />
             ))}
