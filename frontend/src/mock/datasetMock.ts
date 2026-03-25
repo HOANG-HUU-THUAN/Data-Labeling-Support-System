@@ -8,6 +8,14 @@ export const getDatasetsByProject = (projectId: number): Promise<Dataset[]> =>
     setTimeout(() => resolve(datasets.filter((d) => d.projectId === projectId)), 300)
   );
 
+export const deleteDataset = (id: number): Promise<void> =>
+  new Promise((resolve) =>
+    setTimeout(() => {
+      datasets = datasets.filter((d) => d.id !== id);
+      resolve();
+    }, 300)
+  );
+
 export const uploadDataset = (projectId: number, files: File[]): Promise<Dataset[]> =>
   new Promise((resolve) =>
     setTimeout(() => {
