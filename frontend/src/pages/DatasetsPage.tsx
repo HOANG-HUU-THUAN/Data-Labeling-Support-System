@@ -4,6 +4,9 @@ import {
   Button,
   CircularProgress,
   FormControl,
+  ImageList,
+  ImageListItem,
+  ImageListItemBar,
   InputLabel,
   MenuItem,
   Paper,
@@ -24,6 +27,7 @@ const DatasetsPage = () => {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [previewFiles, setPreviewFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [loadingDatasets, setLoadingDatasets] = useState(false);
 
   // Load project list once
   useEffect(() => {
@@ -36,7 +40,10 @@ const DatasetsPage = () => {
   // Reload dataset list when project changes
   useEffect(() => {
     if (selectedProjectId === '') return;
-    getDatasetsByProject(selectedProjectId).then(setDatasets);
+    setLoadingDatasets(true);
+    getDatasetsByProject(selectedProjectId)
+      .then(setDatasets)
+      .finally(() => setLoadingDatasets(false));
   }, [selectedProjectId]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,10 +58,12 @@ const DatasetsPage = () => {
       await uploadDataset(selectedProjectId, previewFiles);
       setPreviewFiles([]);
       if (fileInputRef.current) fileInputRef.current.value = '';
+      setLoadingDatasets(true);
       const updated = await getDatasetsByProject(selectedProjectId);
       setDatasets(updated);
     } finally {
       setUploading(false);
+      setLoadingDatasets(false);
     }
   };
 
@@ -64,7 +73,7 @@ const DatasetsPage = () => {
         Quản lý dataset
       </Typography>
 
-      {/* PROJECT SELECTOR */}
+      {/* PROJECT SELECTOR + UPLOAD */}
       <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
         <Stack spacing={2}>
           <FormControl fullWidth size="small">
@@ -115,69 +124,52 @@ const DatasetsPage = () => {
               <Typography variant="overline" color="text.secondary">
                 Xem trước
               </Typography>
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-                  gap: 1,
-                  mt: 1,
-                }}
-              >
+              <ImageList cols={5} gap={8} sx={{ mt: 1 }}>
                 {previewFiles.map((file, i) => (
-                  <Box
-                    key={i}
-                    component="img"
-                    src={URL.createObjectURL(file)}
-                    alt={file.name}
-                    sx={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
-                  />
+                  <ImageListItem key={i}>
+                    <Box
+                      component="img"
+                      src={URL.createObjectURL(file)}
+                      alt={file.name}
+                      sx={{ height: 100, width: '100%', objectFit: 'cover', borderRadius: 1 }}
+                    />
+                    <ImageListItemBar title={file.name} sx={{ borderRadius: '0 0 4px 4px' }} />
+                  </ImageListItem>
                 ))}
-              </Box>
+              </ImageList>
             </Box>
           )}
         </Stack>
       </Paper>
 
       {/* UPLOADED DATASET GRID */}
-      <Typography variant="overline" color="text.secondary">
-        Dataset đã upload ({datasets.length} ảnh)
-      </Typography>
-      {datasets.length === 0 ? (
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+        <Typography variant="overline" color="text.secondary">
+          Dataset đã upload ({datasets.length} ảnh)
+        </Typography>
+        {loadingDatasets && <CircularProgress size={18} />}
+      </Stack>
+
+      {!loadingDatasets && datasets.length === 0 && (
         <Typography variant="body2" color="text.secondary" mt={1}>
           Chưa có ảnh nào.
         </Typography>
-      ) : (
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-            gap: 1,
-            mt: 1,
-          }}
-        >
+      )}
+
+      {!loadingDatasets && datasets.length > 0 && (
+        <ImageList cols={4} gap={8}>
           {datasets.map((ds) => (
-            <Box key={ds.id} sx={{ position: 'relative' }}>
+            <ImageListItem key={ds.id}>
               <Box
                 component="img"
                 src={ds.url}
                 alt={ds.name}
-                sx={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
+                sx={{ height: 150, width: '100%', objectFit: 'cover', borderRadius: 1 }}
               />
-              <Typography
-                variant="caption"
-                sx={{
-                  display: 'block',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  color: 'text.secondary',
-                }}
-              >
-                {ds.name}
-              </Typography>
-            </Box>
+              <ImageListItemBar title={ds.name} sx={{ borderRadius: '0 0 4px 4px' }} />
+            </ImageListItem>
           ))}
-        </Box>
+        </ImageList>
       )}
     </Box>
   );
