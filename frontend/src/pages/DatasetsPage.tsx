@@ -3,7 +3,11 @@ import {
   Box,
   Button,
   CircularProgress,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   FormControl,
+  IconButton,
   ImageList,
   ImageListItem,
   ImageListItemBar,
@@ -14,6 +18,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import { getProjects } from '../mock/projectMock';
 import { getDatasetsByProject, uploadDataset } from '../mock/datasetMock';
 import type { Project } from '../types/project';
@@ -28,6 +33,7 @@ const DatasetsPage = () => {
   const [previewFiles, setPreviewFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loadingDatasets, setLoadingDatasets] = useState(false);
+  const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
 
   // Load project list once
   useEffect(() => {
@@ -159,18 +165,57 @@ const DatasetsPage = () => {
       {!loadingDatasets && datasets.length > 0 && (
         <ImageList cols={4} gap={8}>
           {datasets.map((ds) => (
-            <ImageListItem key={ds.id}>
+            <ImageListItem
+              key={ds.id}
+              onClick={() => setSelectedDataset(ds)}
+              sx={{ cursor: 'pointer', '&:hover img': { opacity: 0.85 } }}
+            >
               <Box
                 component="img"
                 src={ds.url}
                 alt={ds.name}
-                sx={{ height: 150, width: '100%', objectFit: 'cover', borderRadius: 1 }}
+                sx={{ height: 150, width: '100%', objectFit: 'cover', borderRadius: 1, transition: 'opacity 0.2s' }}
               />
               <ImageListItemBar title={ds.name} sx={{ borderRadius: '0 0 4px 4px' }} />
             </ImageListItem>
           ))}
         </ImageList>
       )}
+
+      {/* IMAGE DETAIL DIALOG */}
+      <Dialog
+        open={selectedDataset !== null}
+        onClose={() => setSelectedDataset(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          Chi tiết ảnh
+          <IconButton onClick={() => setSelectedDataset(null)} size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 2 }}>
+          {selectedDataset && (
+            <Box>
+              <Box
+                component="img"
+                src={selectedDataset.url}
+                alt={selectedDataset.name}
+                sx={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 1, display: 'block' }}
+              />
+              <Stack direction="row" spacing={2} mt={1.5}>
+                <Typography variant="body2" color="text.secondary">
+                  ID: <strong>{selectedDataset.id}</strong>
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Tên: <strong>{selectedDataset.name}</strong>
+                </Typography>
+              </Stack>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
