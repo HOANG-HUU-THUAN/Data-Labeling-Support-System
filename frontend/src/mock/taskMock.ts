@@ -39,3 +39,16 @@ export const deleteTask = (id: number): Promise<void> =>
       resolve();
     }, 300)
   );
+
+export const updateTask = (
+  id: number,
+  data: { name: string; datasetIds: number[]; assigneeId?: number }
+): Promise<Task> =>
+  new Promise((resolve, reject) =>
+    setTimeout(() => {
+      const idx = tasks.findIndex((t) => t.id === id);
+      if (idx === -1) { reject(new Error('Task not found')); return; }
+      tasks[idx] = { ...tasks[idx], ...data };
+      resolve({ ...tasks[idx] });
+    }, 300)
+  );
