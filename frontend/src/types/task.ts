@@ -4,6 +4,7 @@ export interface Task {
   id: number;
   projectId: number;
   name: string;
+  datasetIds: number[];
   status: TaskStatus;
   assigneeId?: number;
 }
