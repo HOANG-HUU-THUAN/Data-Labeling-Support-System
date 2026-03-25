@@ -13,6 +13,11 @@ let nextId = tasks.length + 1;
 export const getTasks = (): Promise<Task[]> =>
   new Promise((resolve) => setTimeout(() => resolve([...tasks]), 300));
 
+export const getTaskById = (id: number): Promise<Task | undefined> =>
+  new Promise((resolve) =>
+    setTimeout(() => resolve(tasks.find((t) => t.id === id)), 300)
+  );
+
 export const createTask = (data: {
   name: string;
   projectId: number;
