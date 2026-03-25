@@ -20,7 +20,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { getProjects } from '../mock/projectMock';
-import { getDatasetsByProject, uploadDataset } from '../mock/datasetMock';
+import { deleteDataset, getDatasetsByProject, uploadDataset } from '../mock/datasetMock';
 import type { Project } from '../types/project';
 import type { Dataset } from '../types/dataset';
 
@@ -34,6 +34,7 @@ const DatasetsPage = () => {
   const [uploading, setUploading] = useState(false);
   const [loadingDatasets, setLoadingDatasets] = useState(false);
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // Load project list once
   useEffect(() => {
@@ -168,7 +169,7 @@ const DatasetsPage = () => {
             <ImageListItem
               key={ds.id}
               onClick={() => setSelectedDataset(ds)}
-              sx={{ cursor: 'pointer', '&:hover img': { opacity: 0.85 } }}
+              sx={{ cursor: 'pointer', position: 'relative', '&:hover img': { opacity: 0.85 }, '&:hover .delete-btn': { opacity: 1 } }}
             >
               <Box
                 component="img"
@@ -177,6 +178,32 @@ const DatasetsPage = () => {
                 sx={{ height: 150, width: '100%', objectFit: 'cover', borderRadius: 1, transition: 'opacity 0.2s' }}
               />
               <ImageListItemBar title={ds.name} sx={{ borderRadius: '0 0 4px 4px' }} />
+              <IconButton
+                className="delete-btn"
+                size="small"
+                color="error"
+                disabled={deletingId === ds.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!window.confirm('Bạn có chắc muốn xóa ảnh này không?')) return;
+                  setDeletingId(ds.id);
+                  deleteDataset(ds.id)
+                    .then(() => getDatasetsByProject(selectedProjectId as number))
+                    .then(setDatasets)
+                    .finally(() => setDeletingId(null));
+                }}
+                sx={{
+                  position: 'absolute',
+                  top: 4,
+                  right: 4,
+                  bgcolor: 'rgba(255,255,255,0.85)',
+                  opacity: 0,
+                  transition: 'opacity 0.2s',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,1)' },
+                }}
+              >
+                {deletingId === ds.id ? <CircularProgress size={16} color="error" /> : <CloseIcon fontSize="small" />}
+              </IconButton>
             </ImageListItem>
           ))}
         </ImageList>
