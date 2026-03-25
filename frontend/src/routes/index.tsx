@@ -8,6 +8,7 @@ import UsersPage from '../pages/UsersPage';
 import AuditLogsPage from '../pages/AuditLogsPage';
 import DatasetsPage from '../pages/DatasetsPage';
 import TasksPage from '../pages/TasksPage';
+import TaskFormPage from '../pages/TaskFormPage';
 import DashboardPage from '../pages/DashboardPage';
 import ExportPage from '../pages/ExportPage';
 import MyTasksPage from '../pages/MyTasksPage';
@@ -42,6 +43,7 @@ const AppRoutes = () => {
       <Route path="/projects/:id" element={<ProtectedRoute roles={['MANAGER', 'ANNOTATOR']}>{withLayout(<ProjectDetail />)}</ProtectedRoute>} />
       <Route path="/datasets" element={<ProtectedRoute roles={['MANAGER']}>{withLayout(<DatasetsPage />)}</ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute roles={['MANAGER']}>{withLayout(<TasksPage />)}</ProtectedRoute>} />
+      <Route path="/tasks/create" element={<ProtectedRoute roles={['MANAGER']}>{withLayout(<TaskFormPage />)}</ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute roles={['MANAGER']}>{withLayout(<DashboardPage />)}</ProtectedRoute>} />
       <Route path="/export" element={<ProtectedRoute roles={['MANAGER']}>{withLayout(<ExportPage />)}</ProtectedRoute>} />
 
