@@ -6,16 +6,21 @@ import {
   Chip,
   CircularProgress,
   Divider,
+  FormControl,
   ImageList,
   ImageListItem,
   ImageListItemBar,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Typography,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import { getTaskById } from '../mock/taskMock';
+import { assignTask, deleteTask, getTaskById } from '../mock/taskMock';
 import { getDatasetsByProject } from '../mock/datasetMock';
 import type { Task, TaskStatus } from '../types/task';
 import type { Dataset } from '../types/dataset';
@@ -45,13 +50,38 @@ const InfoRow = ({ label, children }: { label: string; children: React.ReactNode
   </Stack>
 );
 
+// Annotators from mock
+const ANNOTATORS = [
+  { id: 3, name: 'Annotator' },
+];
+
 const TaskDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [task, setTask] = useState<Task | null | undefined>(undefined); // undefined = loading
+  const [task, setTask] = useState<Task | null | undefined>(undefined);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [loadingDatasets, setLoadingDatasets] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleAssign = (newAssigneeId: number | '') => {
+    if (!task) return;
+    const resolved = newAssigneeId === '' ? undefined : (newAssigneeId as number);
+    setAssigning(true);
+    assignTask(task.id, resolved).then((updated) => {
+      setTask(updated);
+      setAssigning(false);
+    });
+  };
+
+  const handleDelete = async () => {
+    if (!task) return;
+    if (!window.confirm('Bạn có chắc muốn xóa task này?')) return;
+    setDeleting(true);
+    await deleteTask(task.id);
+    navigate('/tasks');
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -113,6 +143,15 @@ const TaskDetailPage = () => {
         >
           Chỉnh sửa
         </Button>
+        <Button
+          variant="outlined"
+          color="error"
+          startIcon={deleting ? <CircularProgress size={16} color="error" /> : <DeleteIcon />}
+          disabled={deleting}
+          onClick={handleDelete}
+        >
+          Xóa
+        </Button>
       </Stack>
 
       <Paper variant="outlined" sx={{ p: 3 }}>
@@ -140,6 +179,29 @@ const TaskDetailPage = () => {
               size="small"
             />
           </InfoRow>
+
+          <Divider />
+
+          {/* ASSIGN SECTION */}
+          <Box>
+            <Typography variant="body2" fontWeight={500} mb={1}>
+              Gán người thực hiện
+            </Typography>
+            <FormControl size="small" sx={{ minWidth: 220 }} disabled={assigning}>
+              <InputLabel>Annotator</InputLabel>
+              <Select
+                value={task.assigneeId ?? ''}
+                label="Annotator"
+                onChange={(e) => handleAssign(e.target.value as number | '')}
+              >
+                <MenuItem value="">— Không gán —</MenuItem>
+                {ANNOTATORS.map((u) => (
+                  <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {assigning && <CircularProgress size={16} sx={{ ml: 1, verticalAlign: 'middle' }} />}
+          </Box>
 
           <Divider />
 
