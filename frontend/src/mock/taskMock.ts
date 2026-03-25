@@ -62,3 +62,13 @@ export const assignTask = (id: number, assigneeId: number | undefined): Promise<
       resolve({ ...tasks[idx] });
     }, 300)
   );
+
+export const updateTaskStatus = (id: number, status: Task['status']): Promise<Task> =>
+  new Promise((resolve, reject) =>
+    setTimeout(() => {
+      const idx = tasks.findIndex((t) => t.id === id);
+      if (idx === -1) { reject(new Error('Task not found')); return; }
+      tasks[idx] = { ...tasks[idx], status };
+      resolve({ ...tasks[idx] });
+    }, 300)
+  );

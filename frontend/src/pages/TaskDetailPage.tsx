@@ -20,7 +20,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import { assignTask, deleteTask, getTaskById } from '../mock/taskMock';
+import { assignTask, deleteTask, getTaskById, updateTaskStatus } from '../mock/taskMock';
 import { getDatasetsByProject } from '../mock/datasetMock';
 import type { Task, TaskStatus } from '../types/task';
 import type { Dataset } from '../types/dataset';
@@ -64,6 +64,16 @@ const TaskDetailPage = () => {
   const [loadingDatasets, setLoadingDatasets] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  const handleStatusChange = (newStatus: TaskStatus) => {
+    if (!task || newStatus === task.status) return;
+    setUpdatingStatus(true);
+    updateTaskStatus(task.id, newStatus).then((updated) => {
+      setTask(updated);
+      setUpdatingStatus(false);
+    });
+  };
 
   const handleAssign = (newAssigneeId: number | '') => {
     if (!task) return;
@@ -182,7 +192,29 @@ const TaskDetailPage = () => {
 
           <Divider />
 
-          {/* ASSIGN SECTION */}
+          {/* STATUS UPDATE SECTION */}
+          <Box>
+            <Typography variant="body2" fontWeight={500} mb={1}>
+              Cập nhật trạng thái
+            </Typography>
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <FormControl size="small" sx={{ minWidth: 200 }} disabled={updatingStatus}>
+                <InputLabel>Trạng thái</InputLabel>
+                <Select
+                  value={task.status}
+                  label="Trạng thái"
+                  onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
+                >
+                  {(Object.keys(STATUS_LABEL) as TaskStatus[]).map((s) => (
+                    <MenuItem key={s} value={s}>{STATUS_LABEL[s]}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {updatingStatus && <CircularProgress size={16} />}
+            </Stack>
+          </Box>
+
+          <Divider />
           <Box>
             <Typography variant="body2" fontWeight={500} mb={1}>
               Gán người thực hiện
