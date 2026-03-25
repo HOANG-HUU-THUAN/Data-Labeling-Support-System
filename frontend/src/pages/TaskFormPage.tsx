@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -20,7 +20,7 @@ import {
 } from '@mui/material';
 import { getProjects } from '../mock/projectMock';
 import { getDatasetsByProject } from '../mock/datasetMock';
-import { createTask } from '../mock/taskMock';
+import { createTask, getTaskById, updateTask } from '../mock/taskMock';
 import type { Project } from '../types/project';
 import type { Dataset } from '../types/dataset';
 
@@ -31,7 +31,10 @@ const ANNOTATORS = [
 
 const TaskFormPage = () => {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const isEdit = Boolean(id);
 
+  const [loading, setLoading] = useState(isEdit);
   const [name, setName] = useState('');
   const [projectId, setProjectId] = useState<number | ''>('');
   const [datasetIds, setDatasetIds] = useState<number[]>([]);
@@ -45,11 +48,34 @@ const TaskFormPage = () => {
   // Validation errors
   const [errors, setErrors] = useState({ name: false, projectId: false, datasetIds: false });
 
+  // Load projects once
   useEffect(() => {
     getProjects().then(setProjects);
   }, []);
 
+  // In edit mode: load existing task data and its datasets
   useEffect(() => {
+    if (!isEdit || !id) return;
+    let cancelled = false;
+    getTaskById(Number(id)).then((task) => {
+      if (cancelled || !task) return;
+      setName(task.name);
+      setProjectId(task.projectId);
+      setAssigneeId(task.assigneeId ?? '');
+      // Load datasets for the project, then restore checked ids
+      getDatasetsByProject(task.projectId).then((all) => {
+        if (cancelled) return;
+        setDatasets(all);
+        setDatasetIds(task.datasetIds);
+        setLoading(false);
+      });
+    });
+    return () => { cancelled = true; };
+  }, [id, isEdit]);
+
+  // In create mode: reload datasets when project changes
+  useEffect(() => {
+    if (isEdit) return; // edit mode uses the effect above
     if (projectId === '') {
       setDatasets([]);
       setDatasetIds([]);
@@ -60,7 +86,7 @@ const TaskFormPage = () => {
     getDatasetsByProject(projectId)
       .then(setDatasets)
       .finally(() => setLoadingDatasets(false));
-  }, [projectId]);
+  }, [projectId, isEdit]);
 
   const toggleDataset = (id: number) => {
     setDatasetIds((prev) =>
@@ -82,22 +108,38 @@ const TaskFormPage = () => {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      await createTask({
-        name: name.trim(),
-        projectId: projectId as number,
-        datasetIds,
-        assigneeId: assigneeId === '' ? undefined : assigneeId,
-      });
+      if (isEdit) {
+        await updateTask(Number(id), {
+          name: name.trim(),
+          datasetIds,
+          assigneeId: assigneeId === '' ? undefined : (assigneeId as number),
+        });
+      } else {
+        await createTask({
+          name: name.trim(),
+          projectId: projectId as number,
+          datasetIds,
+          assigneeId: assigneeId === '' ? undefined : (assigneeId as number),
+        });
+      }
       navigate('/tasks');
     } finally {
       setSubmitting(false);
     }
   };
 
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" mt={8}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Box maxWidth={600}>
       <Typography variant="h5" fontWeight="bold" mb={3}>
-        Tạo task
+        {isEdit ? 'Chỉnh sửa task' : 'Tạo task'}
       </Typography>
 
       <Paper variant="outlined" sx={{ p: 3 }}>
@@ -113,8 +155,8 @@ const TaskFormPage = () => {
             size="small"
           />
 
-          {/* PROJECT */}
-          <FormControl fullWidth size="small" error={errors.projectId}>
+          {/* PROJECT — disabled in edit mode */}
+          <FormControl fullWidth size="small" error={errors.projectId} disabled={isEdit}>
             <InputLabel>Project</InputLabel>
             <Select
               value={projectId}
@@ -192,7 +234,7 @@ const TaskFormPage = () => {
               Hủy
             </Button>
             <Button variant="contained" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? <CircularProgress size={22} color="inherit" /> : 'Tạo'}
+              {submitting ? <CircularProgress size={22} color="inherit" /> : isEdit ? 'Cập nhật' : 'Tạo'}
             </Button>
           </Stack>
         </Stack>

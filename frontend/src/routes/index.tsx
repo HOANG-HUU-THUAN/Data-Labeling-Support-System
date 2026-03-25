@@ -45,6 +45,7 @@ const AppRoutes = () => {
       <Route path="/datasets" element={<ProtectedRoute roles={['MANAGER']}>{withLayout(<DatasetsPage />)}</ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute roles={['MANAGER']}>{withLayout(<TasksPage />)}</ProtectedRoute>} />
       <Route path="/tasks/create" element={<ProtectedRoute roles={['MANAGER']}>{withLayout(<TaskFormPage />)}</ProtectedRoute>} />
+      <Route path="/tasks/:id/edit" element={<ProtectedRoute roles={['MANAGER']}>{withLayout(<TaskFormPage />)}</ProtectedRoute>} />
       <Route path="/tasks/:id" element={<ProtectedRoute roles={['MANAGER']}>{withLayout(<TaskDetailPage />)}</ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute roles={['MANAGER']}>{withLayout(<DashboardPage />)}</ProtectedRoute>} />
       <Route path="/export" element={<ProtectedRoute roles={['MANAGER']}>{withLayout(<ExportPage />)}</ProtectedRoute>} />
