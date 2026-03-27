@@ -19,17 +19,17 @@ public class Project {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "name")
+    @Column(name = "name", length = 256, nullable = false)
     private String name;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "type")
+    @Column(name = "type", length = 100, nullable = false)
     private String type;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
+    @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 
     @Column(name = "deleted", nullable = false)

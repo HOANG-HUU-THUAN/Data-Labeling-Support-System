@@ -20,9 +20,9 @@ public class AuditLog {
     @JoinColumn(name = "user_id")
     private User user;
 
-    @Column(name = "action")
+    @Column(name = "action", length = 256, nullable = false)
     private String action;
 
-    @Column(name = "ip_address")
+    @Column(name = "ip_address", length = 50)
     private String ipAddress;
 }

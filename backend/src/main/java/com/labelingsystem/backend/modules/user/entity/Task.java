@@ -21,7 +21,7 @@ public class Task {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id")
+    @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -32,7 +32,7 @@ public class Task {
     @JoinColumn(name = "assigned_reviewer")
     private User assignedReviewer;
 
-    @Column(name = "status")
+    @Column(name = "status", length = 50, nullable = false)
     private String status;
 
     @Column(name = "deleted", nullable = false)

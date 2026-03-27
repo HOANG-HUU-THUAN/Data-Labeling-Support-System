@@ -19,25 +19,25 @@ public class Annotation {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "image_id")
+    @JoinColumn(name = "image_id", nullable = false)
     private Image image;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id")
+    @JoinColumn(name = "task_id", nullable = false)
     private Task task;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "label_id")
+    @JoinColumn(name = "label_id", nullable = false)
     private Label label;
 
-    @Column(name = "type")
+    @Column(name = "type", length = 100, nullable = false)
     private String type;
 
-    @Column(name = "coordinates", columnDefinition = "jsonb")
+    @Column(name = "coordinates", columnDefinition = "jsonb", nullable = false)
     private String coordinates;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
+    @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 
     @Column(name = "deleted", nullable = false)

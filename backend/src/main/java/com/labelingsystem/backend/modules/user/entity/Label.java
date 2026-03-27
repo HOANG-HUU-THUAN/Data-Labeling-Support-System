@@ -17,13 +17,13 @@ public class Label {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id")
+    @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    @Column(name = "name")
+    @Column(name = "name", length = 256, nullable = false)
     private String name;
 
-    @Column(name = "color")
+    @Column(name = "color", length = 50, nullable = false)
     private String color;
 
     @Column(name = "deleted", nullable = false)

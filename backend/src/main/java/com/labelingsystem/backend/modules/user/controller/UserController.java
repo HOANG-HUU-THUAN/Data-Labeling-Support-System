@@ -21,14 +21,14 @@ public class UserController {
 
     UserService userService;
 
-    // TODO: Require ADMIN role
-    // @PreAuthorize("hasRole('ADMIN')")
+
+     
     @PostMapping
     public ApiResponse<UserResponseDTO> createUser(@RequestBody @Valid UserCreationDTO request) {
         return ApiResponse.success(userService.createUser(request));
     }
 
-    // @PreAuthorize("hasRole('ADMIN')")
+     
     @GetMapping
     public ApiResponse<PageResponse<UserResponseDTO>> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
@@ -36,13 +36,13 @@ public class UserController {
         return ApiResponse.success(userService.getAllUsers(page, size));
     }
 
-    // @PreAuthorize("hasRole('ADMIN')")
+     
     @GetMapping("/{id}")
     public ApiResponse<UserResponseDTO> getUser(@PathVariable Long id) {
         return ApiResponse.success(userService.getUser(id));
     }
 
-    // @PreAuthorize("hasRole('ADMIN')")
+     
     @PutMapping("/{id}")
     public ApiResponse<UserResponseDTO> updateUser(
             @PathVariable Long id, 
@@ -50,21 +50,21 @@ public class UserController {
         return ApiResponse.success(userService.updateUser(id, request));
     }
 
-    // @PreAuthorize("hasRole('ADMIN')")
+     
     @DeleteMapping("/{id}")
     public ApiResponse<String> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return ApiResponse.success("User deleted successfully.");
     }
 
-    // @PreAuthorize("hasRole('ADMIN')")
+     
     @PatchMapping("/{id}/lock")
     public ApiResponse<String> lockUser(@PathVariable Long id) {
         userService.lockUser(id);
         return ApiResponse.success("User locked successfully.");
     }
 
-    // @PreAuthorize("hasRole('ADMIN')")
+     
     @PatchMapping("/{id}/unlock")
     public ApiResponse<String> unlockUser(@PathVariable Long id) {
         userService.unlockUser(id);

@@ -19,14 +19,14 @@ public class Review {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id")
+    @JoinColumn(name = "task_id", nullable = false)
     private Task task;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewer_id")
+    @JoinColumn(name = "reviewer_id", nullable = false)
     private User reviewer;
 
-    @Column(name = "status")
+    @Column(name = "status", length = 50, nullable = false)
     private String status;
 
     @Column(name = "comment", columnDefinition = "TEXT")

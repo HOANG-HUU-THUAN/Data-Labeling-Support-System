@@ -19,13 +19,13 @@ public class Image {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "dataset_id")
+    @JoinColumn(name = "dataset_id", nullable = false)
     private Dataset dataset;
 
-    @Column(name = "file_path")
+    @Column(name = "file_path", length = 1024, nullable = false)
     private String filePath;
 
-    @Column(name = "status")
+    @Column(name = "status", length = 50, nullable = false)
     private String status;
 
     @Column(name = "deleted", nullable = false)
