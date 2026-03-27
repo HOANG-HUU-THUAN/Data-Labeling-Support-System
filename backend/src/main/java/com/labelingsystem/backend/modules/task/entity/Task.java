@@ -1,5 +1,8 @@
-package com.labelingsystem.backend.modules.user.entity;
+package com.labelingsystem.backend.modules.task.entity;
 
+import com.labelingsystem.backend.modules.dataset.entity.Image;
+import com.labelingsystem.backend.modules.project.entity.Project;
+import com.labelingsystem.backend.modules.user.entity.User;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.HashSet;

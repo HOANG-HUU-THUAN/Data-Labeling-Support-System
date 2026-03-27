@@ -1,4 +1,4 @@
-package com.labelingsystem.backend.modules.user.entity;
+package com.labelingsystem.backend.modules.dataset.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
@@ -6,24 +6,27 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
-@Table(name = "datasets")
+@Table(name = "images")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Dataset {
+public class Image {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id", nullable = false)
-    private Project project;
+    @JoinColumn(name = "dataset_id", nullable = false)
+    private Dataset dataset;
 
-    @Column(name = "name", length = 256, nullable = false)
-    private String name;
+    @Column(name = "file_path", length = 1024, nullable = false)
+    private String filePath;
+
+    @Column(name = "status", length = 50, nullable = false)
+    private String status;
 
     @Column(name = "deleted", nullable = false)
     @Builder.Default

@@ -9,7 +9,7 @@ import com.labelingsystem.backend.modules.user.entity.User;
 import com.labelingsystem.backend.modules.user.repository.RoleRepository;
 import com.labelingsystem.backend.modules.user.repository.UserRepository;
 import com.labelingsystem.backend.security.jwt.JwtTokenProvider;
-import com.labelingsystem.backend.security.service.CustomUserDetails;
+import com.labelingsystem.backend.security.service.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -45,15 +45,12 @@ public class AuthServiceImpl implements AuthService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtTokenProvider.generateToken(authentication);
 
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         List<String> roles = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
 
-        // Assuming email is fetched separately or added to CustomUserDetails if needed. 
-        // We can fetch from DB again or load it into UserDetails, here we fetch for completeness.
-        User user = userRepository.findById(userDetails.getId()).orElse(null);
-        String email = user != null ? user.getEmail() : null;
+        String email = userDetails.getEmail();
 
         return AuthResponse.builder()
                 .token(jwt)

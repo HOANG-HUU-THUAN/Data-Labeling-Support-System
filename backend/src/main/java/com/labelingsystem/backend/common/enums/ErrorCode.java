@@ -14,7 +14,13 @@ public enum ErrorCode {
     UNAUTHENTICATED(1006, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
     EMAIL_EXISTED(1008, "Email already existed", HttpStatus.BAD_REQUEST),
-    ROLE_NOT_FOUND(1009, "Role not found", HttpStatus.NOT_FOUND);
+    ROLE_NOT_FOUND(1009, "Role not found", HttpStatus.NOT_FOUND),
+
+    // Project & Label Errors
+    PROJECT_NOT_FOUND(2001, "Lỗi: Không tìm thấy dự án! (Project not found)", HttpStatus.NOT_FOUND),
+    FORBIDDEN_PROJECT_ACCESS(2002, "Lỗi 403: Bạn không có quyền truy cập hoặc chỉnh sửa dự án này! (Forbidden)",
+            HttpStatus.FORBIDDEN),
+    LABEL_NOT_FOUND(2003, "Lỗi: Không tìm thấy nhãn! (Label not found)", HttpStatus.NOT_FOUND);
 
     private final int code;
     private final String message;

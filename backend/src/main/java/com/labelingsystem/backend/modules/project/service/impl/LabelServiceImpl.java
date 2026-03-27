@@ -1,35 +1,40 @@
 package com.labelingsystem.backend.modules.project.service.impl;
 
+import com.labelingsystem.backend.common.enums.ErrorCode;
+import com.labelingsystem.backend.common.exception.CustomAppException;
 import com.labelingsystem.backend.modules.project.dto.request.LabelRequest;
 import com.labelingsystem.backend.modules.project.dto.response.LabelResponse;
 import com.labelingsystem.backend.modules.project.entity.Label;
 import com.labelingsystem.backend.modules.project.entity.Project;
+import com.labelingsystem.backend.modules.project.mapper.ProjectMapper;
 import com.labelingsystem.backend.modules.project.repository.LabelRepository;
 import com.labelingsystem.backend.modules.project.repository.ProjectRepository;
 import com.labelingsystem.backend.modules.project.service.LabelService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class LabelServiceImpl implements LabelService {
 
-    @Autowired private LabelRepository labelRepository;
-    @Autowired private ProjectRepository projectRepository;
+    LabelRepository labelRepository;
+    ProjectRepository projectRepository;
+    ProjectMapper projectMapper;
 
     @Override
     @Transactional
     public LabelResponse addLabel(Long projectId, LabelRequest request, Long userId, boolean isAdmin) {
-        // 1. Tìm Project / Find Project
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Lỗi: Không tìm thấy dự án!"));
+                .orElseThrow(() -> new CustomAppException(ErrorCode.PROJECT_NOT_FOUND));
 
-        // 2. Bảo mật: Kiểm tra quyền sở hữu / Security: Check ownership
         if (!isAdmin && !project.getCreatedBy().getId().equals(userId)) {
-            throw new RuntimeException("Lỗi 403: Bạn không có quyền thêm nhãn vào dự án này!");
+            throw new CustomAppException(ErrorCode.FORBIDDEN_PROJECT_ACCESS);
         }
 
-        // 3. Tạo Label mới / Create new Label
         Label label = new Label();
         label.setName(request.getName());
         label.setColor(request.getColor());
@@ -37,19 +42,18 @@ public class LabelServiceImpl implements LabelService {
 
         Label savedLabel = labelRepository.save(label);
         
-        return new LabelResponse(savedLabel.getId(), savedLabel.getName(), savedLabel.getColor(), projectId);
+        return projectMapper.toLabelResponse(savedLabel);
     }
 
     @Override
     @Transactional
     public LabelResponse updateLabel(Long labelId, LabelRequest request, Long userId, boolean isAdmin) {
         Label label = labelRepository.findById(labelId)
-                .orElseThrow(() -> new RuntimeException("Lỗi: Không tìm thấy nhãn!"));
+                .orElseThrow(() -> new CustomAppException(ErrorCode.LABEL_NOT_FOUND));
 
-        // Security: Get the parent Project to check ownership
         Project project = label.getProject();
         if (!isAdmin && !project.getCreatedBy().getId().equals(userId)) {
-            throw new RuntimeException("Lỗi 403: Bạn không có quyền sửa nhãn của dự án này!");
+            throw new CustomAppException(ErrorCode.FORBIDDEN_PROJECT_ACCESS);
         }
 
         if (request.getName() != null) label.setName(request.getName());
@@ -57,18 +61,18 @@ public class LabelServiceImpl implements LabelService {
 
         Label updatedLabel = labelRepository.save(label);
 
-        return new LabelResponse(updatedLabel.getId(), updatedLabel.getName(), updatedLabel.getColor(), project.getId());
+        return projectMapper.toLabelResponse(updatedLabel);
     }
 
     @Override
     @Transactional
     public void deleteLabel(Long labelId, Long userId, boolean isAdmin) {
         Label label = labelRepository.findById(labelId)
-                .orElseThrow(() -> new RuntimeException("Lỗi: Không tìm thấy nhãn!"));
+                .orElseThrow(() -> new CustomAppException(ErrorCode.LABEL_NOT_FOUND));
 
         Project project = label.getProject();
         if (!isAdmin && !project.getCreatedBy().getId().equals(userId)) {
-            throw new RuntimeException("Lỗi 403: Bạn không có quyền xóa nhãn của dự án này!");
+             throw new CustomAppException(ErrorCode.FORBIDDEN_PROJECT_ACCESS);
         }
 
         labelRepository.delete(label);

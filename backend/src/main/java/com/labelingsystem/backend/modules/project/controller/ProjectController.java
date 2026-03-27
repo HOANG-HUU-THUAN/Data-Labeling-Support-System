@@ -1,114 +1,86 @@
 package com.labelingsystem.backend.modules.project.controller;
 
+import com.labelingsystem.backend.common.response.ApiResponse;
 import com.labelingsystem.backend.modules.project.dto.request.ProjectCreateRequest;
-import com.labelingsystem.backend.modules.project.entity.Project;
+import com.labelingsystem.backend.modules.project.dto.request.ProjectUpdateRequest;
+import com.labelingsystem.backend.modules.project.dto.response.ProjectResponse;
 import com.labelingsystem.backend.modules.project.service.ProjectService;
 import com.labelingsystem.backend.security.service.UserDetailsImpl; 
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
-import com.labelingsystem.backend.modules.project.dto.response.ProjectResponse;
-import com.labelingsystem.backend.modules.project.dto.request.ProjectUpdateRequest;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/projects")
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ProjectController {
 
-    @Autowired
-    private ProjectService projectService;
+    ProjectService projectService;
 
     @PostMapping
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('MANAGER')")
-    public ResponseEntity<?> createProject(@RequestBody ProjectCreateRequest request, Authentication authentication) {
-        
-        // Cast to get the exact UserDetailsImpl object
+    public ApiResponse<ProjectResponse> createProject(@RequestBody @Valid ProjectCreateRequest request, Authentication authentication) {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-        
         String managerEmail = userDetails.getEmail(); 
 
-        try {
-            Project newProject = projectService.createProject(request, managerEmail);
-            return ResponseEntity.ok("Dự án được tạo thành công với ID: " + newProject.getId());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Lỗi khi tạo dự án: " + e.getMessage());
-        }
+        return ApiResponse.<ProjectResponse>builder()
+                .data(projectService.createProject(request, managerEmail))
+                .build();
     }
 
     @GetMapping
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('MANAGER')")
-    public ResponseEntity<?> getMyProjects(Authentication authentication) {
-        
-        // Get the currently logged-in user's details from the Token
+    public ApiResponse<List<ProjectResponse>> getMyProjects(Authentication authentication) {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         Long managerId = userDetails.getId();
 
-        try {
-            // Call Service to get data
-            List<ProjectResponse> myProjects = projectService.getProjectsByManagerId(managerId);
-
-            return ResponseEntity.ok(myProjects);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Lỗi khi lấy danh sách: " + e.getMessage());
-        }
+        return ApiResponse.<List<ProjectResponse>>builder()
+                .data(projectService.getProjectsByManagerId(managerId))
+                .build();
     }
 
-    // ==========================================
-    // API SỬA DỰ ÁN (UPDATE)
-    // ==========================================
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('MANAGER')")
-    public ResponseEntity<?> updateProject(
+    public ApiResponse<ProjectResponse> updateProject(
             @PathVariable("id") Long projectId,
-            @RequestBody ProjectUpdateRequest request, 
+            @RequestBody @Valid ProjectUpdateRequest request, 
             Authentication authentication) {
         
-        try {
-            UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-            Long userId = userDetails.getId();
-            
-            boolean isAdmin = userDetails.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().contains("ADMIN"));
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        Long userId = userDetails.getId();
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().contains("ADMIN"));
 
-            projectService.updateProject(projectId, request, userId, isAdmin);
-            return ResponseEntity.ok("Cập nhật dự án thành công! (Project updated successfully!)");
-            
-        } catch (RuntimeException e) {
-            if(e.getMessage().contains("403")) {
-                return ResponseEntity.status(403).body(e.getMessage());
-            }
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        return ApiResponse.<ProjectResponse>builder()
+                .data(projectService.updateProject(projectId, request, userId, isAdmin))
+                .build();
     }
 
-    // ==========================================
-    // API XÓA DỰ ÁN (DELETE)
-    // ==========================================
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('MANAGER')")
-    public ResponseEntity<?> deleteProject(
+    public ApiResponse<String> deleteProject(
             @PathVariable("id") Long projectId, 
             Authentication authentication) {
         
-        try {
-            UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-            Long userId = userDetails.getId();
-            boolean isAdmin = userDetails.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().contains("ADMIN"));
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        Long userId = userDetails.getId();
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().contains("ADMIN"));
 
-            projectService.deleteProject(projectId, userId, isAdmin);
-            return ResponseEntity.ok("Xóa dự án thành công! (Project deleted successfully!)");
-            
-        } catch (RuntimeException e) {
-            if(e.getMessage().contains("403")) {
-                return ResponseEntity.status(403).body(e.getMessage());
-            }
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        projectService.deleteProject(projectId, userId, isAdmin);
+        
+        return ApiResponse.<String>builder()
+                .data("Xóa dự án thành công!")
+                .build();
     }
 }

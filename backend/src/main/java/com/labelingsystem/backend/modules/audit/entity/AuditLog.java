@@ -1,5 +1,6 @@
-package com.labelingsystem.backend.modules.user.entity;
+package com.labelingsystem.backend.modules.audit.entity;
 
+import com.labelingsystem.backend.modules.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 

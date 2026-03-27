@@ -1,36 +1,42 @@
 package com.labelingsystem.backend.modules.project.service.impl;
 
+import com.labelingsystem.backend.common.enums.ErrorCode;
+import com.labelingsystem.backend.common.exception.CustomAppException;
 import com.labelingsystem.backend.modules.project.dto.request.ProjectCreateRequest;
 import com.labelingsystem.backend.modules.project.dto.request.ProjectUpdateRequest;
 import com.labelingsystem.backend.modules.project.dto.response.ProjectResponse;
 import com.labelingsystem.backend.modules.project.entity.Label;
 import com.labelingsystem.backend.modules.project.entity.Project;
+import com.labelingsystem.backend.modules.project.mapper.ProjectMapper;
 import com.labelingsystem.backend.modules.project.repository.ProjectRepository;
 import com.labelingsystem.backend.modules.project.service.ProjectService;
 import com.labelingsystem.backend.modules.user.entity.User;
 import com.labelingsystem.backend.modules.user.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ProjectServiceImpl implements ProjectService {
 
-    @Autowired private ProjectRepository projectRepository;
-    @Autowired private UserRepository userRepository;
+    ProjectRepository projectRepository;
+    UserRepository userRepository;
+    ProjectMapper projectMapper;
 
     @Override
     @Transactional
-    public Project createProject(ProjectCreateRequest request, String managerEmail) {
-        
+    public ProjectResponse createProject(ProjectCreateRequest request, String managerEmail) {
         User manager = userRepository.findByEmail(managerEmail)
-                .orElseThrow(() -> new RuntimeException("Error: Manager not found."));
+                .orElseThrow(() -> new CustomAppException(ErrorCode.USER_NOT_EXISTED));
 
-        Project project = new Project();
-        project.setName(request.getName());
-        project.setDescription(request.getDescription());
+        Project project = projectMapper.toProject(request);
         project.setCreatedBy(manager);
 
         if (request.getLabels() != null && !request.getLabels().isEmpty()) {
@@ -44,7 +50,8 @@ public class ProjectServiceImpl implements ProjectService {
             }
         }
 
-        return projectRepository.save(project);
+        project = projectRepository.save(project);
+        return projectMapper.toProjectResponse(project);
     }
 
 
@@ -52,27 +59,9 @@ public class ProjectServiceImpl implements ProjectService {
     public List<ProjectResponse> getProjectsByManagerId(Long managerId) {
         List<Project> projects = projectRepository.findByCreatedById(managerId);
 
-        // Use Java Stream to transform (Map) each Project into ProjectResponse
-        return projects.stream().map(project -> {
-            ProjectResponse response = new ProjectResponse();
-            response.setId(project.getId());
-            response.setName(project.getName());
-            response.setDescription(project.getDescription());
-            response.setStatus(project.getStatus());
-            response.setCreatedAt(project.getCreatedAt());
-
-        // Transform list of Label Entities into LabelResponse DTOs
-            List<ProjectResponse.LabelResponse> labelResponses = project.getLabels().stream().map(label -> {
-                ProjectResponse.LabelResponse labelDto = new ProjectResponse.LabelResponse();
-                labelDto.setId(label.getId());
-                labelDto.setName(label.getName());
-                labelDto.setColor(label.getColor());
-                return labelDto;
-            }).toList();
-
-            response.setLabels(labelResponses);
-            return response;
-        }).toList();
+        return projects.stream()
+                .map(projectMapper::toProjectResponse)
+                .collect(Collectors.toList());
     }
 
     // ==========================================
@@ -82,24 +71,19 @@ public class ProjectServiceImpl implements ProjectService {
     @Transactional
     public ProjectResponse updateProject(Long projectId, ProjectUpdateRequest request, Long userId, boolean isAdmin) {
         
-        // Find project in DB
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Lỗi: Không tìm thấy dự án! (Project not found)"));
+                .orElseThrow(() -> new CustomAppException(ErrorCode.PROJECT_NOT_FOUND));
 
         if (!isAdmin && !project.getCreatedBy().getId().equals(userId)) {
-            throw new RuntimeException("Lỗi 403: Bạn không có quyền sửa dự án của người khác! (Forbidden)");
+            throw new CustomAppException(ErrorCode.FORBIDDEN_PROJECT_ACCESS);
         }
 
-        if (request.getName() != null) project.setName(request.getName());
-        if (request.getDescription() != null) project.setDescription(request.getDescription());
-        if (request.getStatus() != null) project.setStatus(request.getStatus());
+        projectMapper.updateProjectFromDTO(request, project);
 
         // Update Labels (Full overwrite)
         if (request.getLabels() != null) {
-            // Clear old list (Hibernate auto-deletes in DB due to orphanRemoval=true)
             project.getLabels().clear(); 
 
-            // Load new list
             for (ProjectUpdateRequest.LabelUpdateRequest labelReq : request.getLabels()) {
                 Label newLabel = new Label();
                 newLabel.setName(labelReq.getName());
@@ -109,16 +93,8 @@ public class ProjectServiceImpl implements ProjectService {
             }
         }
 
-        Project updatedProject = projectRepository.save(project);
-
-        ProjectResponse response = new ProjectResponse();
-        response.setId(updatedProject.getId());
-        response.setName(updatedProject.getName());
-        response.setDescription(updatedProject.getDescription());
-        response.setStatus(updatedProject.getStatus());
-        // ... (Map thêm Label tương tự phần GET nhé)
-        
-        return response;
+        project = projectRepository.save(project);
+        return projectMapper.toProjectResponse(project);
     }
 
     // ==========================================
@@ -128,14 +104,13 @@ public class ProjectServiceImpl implements ProjectService {
     @Transactional
     public void deleteProject(Long projectId, Long userId, boolean isAdmin) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Lỗi: Không tìm thấy dự án! (Project not found)"));
+                .orElseThrow(() -> new CustomAppException(ErrorCode.PROJECT_NOT_FOUND));
 
-        // Same ownership check as Update
         if (!isAdmin && !project.getCreatedBy().getId().equals(userId)) {
-            throw new RuntimeException("Lỗi 403: Bạn không có quyền xóa dự án của người khác! (Forbidden)");
+            throw new CustomAppException(ErrorCode.FORBIDDEN_PROJECT_ACCESS);
         }
 
-        // Delete project (Child labels are auto-deleted)
-        projectRepository.delete(project);
+        project.setDeleted(true);
+        projectRepository.save(project);
     }
 }

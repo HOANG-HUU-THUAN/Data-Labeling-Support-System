@@ -7,7 +7,7 @@ import com.labelingsystem.backend.modules.project.dto.request.ProjectUpdateReque
 import java.util.List;
 
 public interface ProjectService {
-    Project createProject(ProjectCreateRequest request, String managerEmail);
+    ProjectResponse createProject(ProjectCreateRequest request, String managerEmail);
 
     List<ProjectResponse> getProjectsByManagerId(Long managerId);
 
