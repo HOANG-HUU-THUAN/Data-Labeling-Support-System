@@ -19,6 +19,7 @@ import ProjectList from '../pages/ProjectListPage';
 import ProjectCreate from '../pages/ProjectCreate';
 import ProjectDetail from '../pages/ProjectDetail';
 import ProjectEditPage from '../pages/ProjectEditPage';
+import AnnotationWorkspacePage from "./features/annotator/pages/AnnotationWorkspacePage";
 
 const withLayout = (element: React.ReactNode) => (
   <MainLayout>{element}</MainLayout>
@@ -51,6 +52,7 @@ const AppRoutes = () => {
       <Route path="/export" element={<ProtectedRoute roles={['MANAGER']}>{withLayout(<ExportPage />)}</ProtectedRoute>} />
 
       {/* ANNOTATOR only */}
+      <Route path="/task/:id" element={<AnnotationWorkspacePage />} />
       <Route path="/my-tasks" element={<ProtectedRoute roles={['ANNOTATOR']}>{withLayout(<MyTasksPage />)}</ProtectedRoute>} />
       <Route path="/annotation" element={<ProtectedRoute roles={['ANNOTATOR']}>{withLayout(<AnnotationPage />)}</ProtectedRoute>} />
 
