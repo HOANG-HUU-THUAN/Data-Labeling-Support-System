@@ -150,17 +150,13 @@ GET    /audit-logs
 GET    /audit-logs/{id}
 */
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import MyTasksPage from "./features/annotator/pages/MyTasksPage";
-import AnnotationWorkspacePage from "./features/annotator/pages/AnnotationWorkspacePage";
+import { BrowserRouter } from "react-router-dom";
+import AppRoutes from "./routes/AppRoutes";
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<MyTasksPage />} />
-        <Route path="/task/:id" element={<AnnotationWorkspacePage />} />
-      </Routes>
+      <AppRoutes />
     </BrowserRouter>
   );
 }

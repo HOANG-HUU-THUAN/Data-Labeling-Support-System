@@ -1,33 +1,21 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-function MyTasksPage() {
-  const [tasks, setTasks] = useState<any[]>([]);
+const MyTasksPage = () => {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fakeData = [
-      { id: 1, name: "Task 1" },
-      { id: 2, name: "Task 2" },
-    ];
-    setTasks(fakeData);
-  }, []);
-
   return (
-    <div>
+    <div style={{ padding: 20 }}>
       <h1>Task của tôi</h1>
 
-      {tasks.map((task) => (
-        <div
-          key={task.id}
-          onClick={() => navigate(`/task/${task.id}`)}
-          style={{ cursor: "pointer", marginBottom: "10px" }}
-        >
-          <p>{task.name}</p>
-        </div>
-      ))}
+      <div onClick={() => navigate("/task/1")} style={{ cursor: "pointer", marginTop: 10 }}>
+        🔹 Task 1
+      </div>
+
+      <div onClick={() => navigate("/task/2")} style={{ cursor: "pointer", marginTop: 10 }}>
+        🔹 Task 2
+      </div>
     </div>
   );
-}
+};
 
 export default MyTasksPage;
