@@ -14,6 +14,7 @@ public class ProjectUpdateRequest {
     private String description;
     private String status;
     private String type;
+    private String guideline;
     
     @Valid
     private List<LabelUpdateRequest> labels; 

@@ -1,5 +1,6 @@
 package com.labelingsystem.backend.modules.project.service.impl;
 
+import com.labelingsystem.backend.common.enums.ProjectStatus;
 import com.labelingsystem.backend.common.enums.ErrorCode;
 import com.labelingsystem.backend.common.exception.CustomAppException;
 import com.labelingsystem.backend.modules.project.dto.request.ProjectCreateRequest;
@@ -38,6 +39,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         Project project = projectMapper.toProject(request);
         project.setCreatedBy(manager);
+        project.setStatus(ProjectStatus.ACTIVE);
 
         if (request.getLabels() != null && !request.getLabels().isEmpty()) {
             for (ProjectCreateRequest.LabelRequest labelReq : request.getLabels()) {
@@ -112,5 +114,17 @@ public class ProjectServiceImpl implements ProjectService {
 
         project.setDeleted(true);
         projectRepository.save(project);
+    }
+
+    @Override
+    public ProjectResponse getProjectById(Long projectId, Long userId, boolean isAdmin) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new CustomAppException(ErrorCode.PROJECT_NOT_FOUND));
+
+        // For now, allow manager, admin, annotator and reviewer access.
+        // In a real system, we should check if the user is actually assigned to this project.
+        // But since task assignment logic is still simple, we allow all authenticated roles for now.
+        
+        return projectMapper.toProjectResponse(project);
     }
 }
