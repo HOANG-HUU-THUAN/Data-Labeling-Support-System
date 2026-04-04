@@ -1,5 +1,6 @@
 package com.labelingsystem.backend.modules.task.entity;
 
+import com.labelingsystem.backend.common.enums.TaskStatus;
 import com.labelingsystem.backend.modules.dataset.entity.Image;
 import com.labelingsystem.backend.modules.project.entity.Project;
 import com.labelingsystem.backend.modules.user.entity.User;
@@ -35,8 +36,12 @@ public class Task {
     @JoinColumn(name = "assigned_reviewer")
     private User assignedReviewer;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50, nullable = false)
-    private String status;
+    private TaskStatus status;
+
+    @Column(name = "is_locked", nullable = false)
+    private boolean isLocked = false;
 
     @Column(name = "deleted", nullable = false)
     @Builder.Default

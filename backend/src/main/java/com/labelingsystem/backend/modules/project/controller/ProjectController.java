@@ -36,7 +36,7 @@ public class ProjectController {
         return ApiResponse.<ProjectResponse>builder()
                 .data(projectService.createProject(request, managerEmail))
                 .build();
-    }
+        }
 
     @GetMapping
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('MANAGER')")

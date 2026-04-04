@@ -11,6 +11,7 @@ import com.labelingsystem.backend.modules.project.entity.Project;
 import com.labelingsystem.backend.modules.project.repository.ProjectRepository;
 import com.labelingsystem.backend.modules.task.dto.request.TaskBatchCreateRequest;
 import com.labelingsystem.backend.modules.task.entity.Task;
+import com.labelingsystem.backend.common.enums.TaskStatus;
 import com.labelingsystem.backend.modules.task.repository.TaskRepository;
 import com.labelingsystem.backend.modules.task.service.TaskService;
 import com.labelingsystem.backend.modules.user.entity.User;
@@ -87,7 +88,7 @@ public class TaskServiceImpl implements TaskService {
                     .project(project)
                     .assignedAnnotator(assignedAnnotator)
                     .assignedReviewer(assignedReviewer)
-                    .status("ASSIGNED")
+                    .status(TaskStatus.ASSIGNED)
                     .deleted(false)
                     .images(new HashSet<>(batchImages))
                     .build();
