@@ -1,7 +1,10 @@
 package com.labelingsystem.backend.common.enums;
 
 public enum TaskStatus {
-    ASSIGNED,
-    REJECTED,
-    APPROVED
+    PENDING,
+    IN_PROGRESS,
+    ANNOTATED,
+    REVIEWING,
+    APPROVED,
+    REJECTED
 }
