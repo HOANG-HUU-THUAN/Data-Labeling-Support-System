@@ -57,6 +57,7 @@ const AppRoutes = () => {
 
       {/* REVIEWER only */}
       <Route path="/review" element={<ProtectedRoute roles={['REVIEWER']}>{withLayout(<ReviewPage />)}</ProtectedRoute>} />
+      <Route path="/review/:taskId" element={<ProtectedRoute roles={['REVIEWER']}>{withLayout(<ReviewPage />)}</ProtectedRoute>} />
     </Routes>
   );
 };
