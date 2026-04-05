@@ -1,11 +1,23 @@
 import type { Dataset } from '../types/dataset';
 
-let datasets: Dataset[] = [];
-let nextId = 1;
+let datasets: Dataset[] = [
+  { id: 1, projectId: 1, name: 'image_001.jpg', url: 'https://picsum.photos/seed/ds1/600/400' },
+  { id: 2, projectId: 1, name: 'image_002.jpg', url: 'https://picsum.photos/seed/ds2/600/400' },
+  { id: 3, projectId: 1, name: 'image_003.jpg', url: 'https://picsum.photos/seed/ds3/600/400' },
+  { id: 4, projectId: 2, name: 'image_004.jpg', url: 'https://picsum.photos/seed/ds4/600/400' },
+  { id: 5, projectId: 2, name: 'image_005.jpg', url: 'https://picsum.photos/seed/ds5/600/400' },
+  { id: 6, projectId: 3, name: 'image_006.jpg', url: 'https://picsum.photos/seed/ds6/600/400' },
+];
+let nextId = 7;
 
 export const getDatasetsByProject = (projectId: number): Promise<Dataset[]> =>
   new Promise((resolve) =>
     setTimeout(() => resolve(datasets.filter((d) => d.projectId === projectId)), 300)
+  );
+
+export const getDatasetsByIds = (ids: number[]): Promise<Dataset[]> =>
+  new Promise((resolve) =>
+    setTimeout(() => resolve(datasets.filter((d) => ids.includes(d.id))), 300)
   );
 
 export const deleteDataset = (id: number): Promise<void> =>
