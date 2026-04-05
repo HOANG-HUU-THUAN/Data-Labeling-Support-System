@@ -32,6 +32,22 @@ export const toggleLockUser = (id: number): Promise<void> =>
     }, 300);
   });
 
+export const lockUser = (id: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(() => {
+      USERS = USERS.map((u) => (u.id === id ? { ...u, isLocked: true } : u));
+      resolve();
+    }, 300);
+  });
+
+export const unlockUser = (id: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(() => {
+      USERS = USERS.map((u) => (u.id === id ? { ...u, isLocked: false } : u));
+      resolve();
+    }, 300);
+  });
+
 export const updateUser = (id: number, patch: Partial<Pick<AppUser, 'name' | 'email' | 'role' | 'password'>>): Promise<void> =>
   new Promise((resolve) => {
     setTimeout(() => {

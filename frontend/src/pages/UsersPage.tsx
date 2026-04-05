@@ -38,7 +38,8 @@ import type { Role } from '../types/auth';
 import {
   type AppUser,
   getUsers,
-  toggleLockUser,
+  lockUser,
+  unlockUser,
   deleteUser,
 } from '../mock/userMock';
 
@@ -103,6 +104,9 @@ const UsersPage = () => {
 
   // Dialogs
   const [viewUser, setViewUser] = useState<AppUser | null>(null);
+  const [lockTarget, setLockTarget] = useState<AppUser | null>(null);
+  const [unlockTarget, setUnlockTarget] = useState<AppUser | null>(null);
+  const [locking, setLocking] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -121,9 +125,22 @@ const UsersPage = () => {
     return matchSearch && matchRole;
   });
 
-  const handleToggleLock = async (u: AppUser) => {
-    await toggleLockUser(u.id);
-    setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, isLocked: !x.isLocked } : x)));
+  const handleLock = async () => {
+    if (!lockTarget) return;
+    setLocking(true);
+    await lockUser(lockTarget.id);
+    setUsers((prev) => prev.map((x) => (x.id === lockTarget.id ? { ...x, isLocked: true } : x)));
+    setLocking(false);
+    setLockTarget(null);
+  };
+
+  const handleUnlock = async () => {
+    if (!unlockTarget) return;
+    setLocking(true);
+    await unlockUser(unlockTarget.id);
+    setUsers((prev) => prev.map((x) => (x.id === unlockTarget.id ? { ...x, isLocked: false } : x)));
+    setLocking(false);
+    setUnlockTarget(null);
   };
 
   const handleDelete = async () => {
@@ -229,7 +246,7 @@ const UsersPage = () => {
                       <TableCell>
                         <Chip
                           label={u.isLocked ? 'Locked' : 'Active'}
-                          color={u.isLocked ? 'default' : 'success'}
+                          color={u.isLocked ? 'error' : 'success'}
                           size="small"
                           sx={{ fontWeight: 600 }}
                         />
@@ -250,7 +267,7 @@ const UsersPage = () => {
                             <IconButton
                               size="small"
                               color={u.isLocked ? 'success' : 'warning'}
-                              onClick={() => handleToggleLock(u)}
+                              onClick={() => u.isLocked ? setUnlockTarget(u) : setLockTarget(u)}
                             >
                               {u.isLocked ? (
                                 <LockOpenOutlinedIcon fontSize="small" />
@@ -291,6 +308,52 @@ const UsersPage = () => {
 
       {/* ── Dialogs ── */}
       {viewUser && <ViewDialog user={viewUser} onClose={() => setViewUser(null)} />}
+
+      {lockTarget && (
+        <Dialog open onClose={() => setLockTarget(null)} maxWidth="xs" fullWidth>
+          <DialogTitle sx={{ fontWeight: 700 }}>Khóa tài khoản</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2">
+              Khóa tài khoản <strong>{lockTarget.name}</strong> ({lockTarget.email})?
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+            <Button onClick={() => setLockTarget(null)} disabled={locking}>Hủy</Button>
+            <Button
+              variant="contained"
+              color="warning"
+              disabled={locking}
+              onClick={handleLock}
+              sx={{ borderRadius: 3, textTransform: 'none', fontWeight: 600 }}
+            >
+              {locking ? <CircularProgress size={18} color="inherit" /> : 'Khóa'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+
+      {unlockTarget && (
+        <Dialog open onClose={() => setUnlockTarget(null)} maxWidth="xs" fullWidth>
+          <DialogTitle sx={{ fontWeight: 700 }}>Mở khóa tài khoản</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2">
+              Mở khóa tài khoản <strong>{unlockTarget.name}</strong> ({unlockTarget.email})?
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+            <Button onClick={() => setUnlockTarget(null)} disabled={locking}>Hủy</Button>
+            <Button
+              variant="contained"
+              color="success"
+              disabled={locking}
+              onClick={handleUnlock}
+              sx={{ borderRadius: 3, textTransform: 'none', fontWeight: 600 }}
+            >
+              {locking ? <CircularProgress size={18} color="inherit" /> : 'Mở khóa'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       {deleteTarget && (
         <Dialog open onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
