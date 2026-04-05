@@ -5,6 +5,7 @@ import ProtectedRoute from './ProtectedRoute';
 import LoginPage from '../pages/LoginPage';
 import HomePage from '../pages/HomePage';
 import UsersPage from '../pages/UsersPage';
+import UserFormPage from '../pages/UserFormPage';
 import AuditLogsPage from '../pages/AuditLogsPage';
 import DatasetsPage from '../pages/DatasetsPage';
 import TasksPage from '../pages/TasksPage';
@@ -36,6 +37,8 @@ const AppRoutes = () => {
 
       {/* ADMIN only */}
       <Route path="/users" element={<ProtectedRoute roles={['ADMIN']}>{withLayout(<UsersPage />)}</ProtectedRoute>} />
+      <Route path="/users/create" element={<ProtectedRoute roles={['ADMIN']}>{withLayout(<UserFormPage />)}</ProtectedRoute>} />
+      <Route path="/users/:id/edit" element={<ProtectedRoute roles={['ADMIN']}>{withLayout(<UserFormPage />)}</ProtectedRoute>} />
       <Route path="/audit-logs" element={<ProtectedRoute roles={['ADMIN']}>{withLayout(<AuditLogsPage />)}</ProtectedRoute>} />
 
       {/* MANAGER only */}

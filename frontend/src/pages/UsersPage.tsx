@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -33,15 +34,12 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
-import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import type { Role } from '../types/auth';
 import {
   type AppUser,
   getUsers,
   toggleLockUser,
-  updateUser,
   deleteUser,
-  createUser,
 } from '../mock/userMock';
 
 const ROLES: Role[] = ['ADMIN', 'MANAGER', 'ANNOTATOR', 'REVIEWER'];
@@ -53,7 +51,7 @@ const ROLE_COLOR: Record<Role, 'error' | 'primary' | 'success' | 'info'> = {
   REVIEWER: 'info',
 };
 
-const EMPTY_FORM = { name: '', email: '', role: 'ANNOTATOR' as Role, isLocked: false };
+
 
 // ── View Dialog ───────────────────────────────────────────────────────────────
 function ViewDialog({ user, onClose }: { user: AppUser | null; onClose: () => void }) {
@@ -93,142 +91,9 @@ function ViewDialog({ user, onClose }: { user: AppUser | null; onClose: () => vo
   );
 }
 
-// ── Edit / Create Dialog ───────────────────────────────────────────────────────
-function EditDialog({
-  user,
-  onClose,
-  onSave,
-}: {
-  user: AppUser | null;
-  onClose: () => void;
-  onSave: (data: { name: string; email: string; role: Role; password?: string }) => Promise<void>;
-}) {
-  const isCreate = !user;
-  const [form, setForm] = useState({
-    name: user?.name ?? '',
-    email: user?.email ?? '',
-    role: user?.role ?? ('ANNOTATOR' as Role),
-    password: '',
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  const handleSave = async () => {
-    if (!form.name.trim()) {
-      setError('Tên không được để trống.');
-      return;
-    }
-    if (!form.email.trim()) {
-      setError('Email không được để trống.');
-      return;
-    }
-    if (!EMAIL_RE.test(form.email.trim())) {
-      setError('Email không đúng định dạng.');
-      return;
-    }
-    if (isCreate) {
-      if (!form.password) {
-        setError('Mật khẩu không được để trống.');
-        return;
-      }
-      if (form.password.length < 6) {
-        setError('Mật khẩu phải có ít nhất 6 ký tự.');
-        return;
-      }
-    }
-    setSaving(true);
-    try {
-      await onSave({ name: form.name, email: form.email, role: form.role, ...(isCreate ? { password: form.password } : {}) });
-      onClose();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle sx={{ fontWeight: 700 }}>
-        {isCreate ? 'Tạo người dùng' : 'Chỉnh sửa người dùng'}
-      </DialogTitle>
-      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: '16px !important' }}>
-        {error && (
-          <Typography variant="body2" color="error">{error}</Typography>
-        )}
-        <TextField
-          label="Tên"
-          size="small"
-          fullWidth
-          value={form.name}
-          onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); setError(null); }}
-        />
-        <TextField
-          label="Email"
-          size="small"
-          fullWidth
-          value={form.email}
-          onChange={(e) => { setForm((f) => ({ ...f, email: e.target.value })); setError(null); }}
-        />
-        {isCreate && (
-          <TextField
-            label="Mật khẩu"
-            size="small"
-            fullWidth
-            type={showPassword ? 'text' : 'password'}
-            value={form.password}
-            onChange={(e) => { setForm((f) => ({ ...f, password: e.target.value })); setError(null); }}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    edge="end"
-                    onClick={() => setShowPassword((v) => !v)}
-                    tabIndex={-1}
-                  >
-                    {showPassword
-                      ? <VisibilityOffOutlinedIcon fontSize="small" />
-                      : <VisibilityOutlinedIcon fontSize="small" />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-        )}
-        <FormControl fullWidth size="small">
-          <InputLabel>Role</InputLabel>
-          <Select
-            value={form.role}
-            label="Role"
-            onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as Role }))}
-          >
-            {ROLES.map((r) => (
-              <MenuItem key={r} value={r}>
-                <Chip label={r} color={ROLE_COLOR[r]} size="small" sx={{ fontWeight: 700 }} />
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-        <Button onClick={onClose} disabled={saving}>Hủy</Button>
-        <Button
-          variant="contained"
-          disabled={saving}
-          onClick={handleSave}
-          sx={{ borderRadius: 3, textTransform: 'none', fontWeight: 600 }}
-        >
-          {saving ? <CircularProgress size={18} color="inherit" /> : isCreate ? 'Tạo' : 'Lưu'}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
 // ── UsersPage ──────────────────────────────────────────────────────────────────
 const UsersPage = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -238,8 +103,6 @@ const UsersPage = () => {
 
   // Dialogs
   const [viewUser, setViewUser] = useState<AppUser | null>(null);
-  const [editUser, setEditUser] = useState<AppUser | null | typeof EMPTY_FORM>(undefined as never);
-  const [editOpen, setEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -272,30 +135,6 @@ const UsersPage = () => {
     setDeleteTarget(null);
   };
 
-  const openCreate = () => {
-    setEditUser(null);
-    setEditOpen(true);
-  };
-
-  const openEdit = (u: AppUser) => {
-    setEditUser(u);
-    setEditOpen(true);
-  };
-
-  const handleSave = async (data: { name: string; email: string; role: Role; password?: string }) => {
-    if (editUser === null) {
-      // create
-      const created = await createUser({ ...data, password: data.password ?? '', isLocked: false });
-      setUsers((prev) => [...prev, created]);
-    } else {
-      // update
-      await updateUser((editUser as AppUser).id, data);
-      setUsers((prev) =>
-        prev.map((x) => (x.id === (editUser as AppUser).id ? { ...x, ...data } : x))
-      );
-    }
-  };
-
   return (
     <Box display="flex" flexDirection="column" height="100%" gap={2.5}>
       {/* ── Header ── */}
@@ -306,7 +145,7 @@ const UsersPage = () => {
         <Button
           variant="contained"
           startIcon={<PersonAddAltOutlinedIcon />}
-          onClick={openCreate}
+          onClick={() => navigate('/users/create')}
           sx={{ borderRadius: 3, textTransform: 'none', fontWeight: 600 }}
         >
           Tạo người dùng
@@ -403,7 +242,7 @@ const UsersPage = () => {
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Chỉnh sửa">
-                            <IconButton size="small" color="primary" onClick={() => openEdit(u)}>
+                            <IconButton size="small" color="primary" onClick={() => navigate(`/users/${u.id}/edit`)}>
                               <EditOutlinedIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
@@ -452,14 +291,6 @@ const UsersPage = () => {
 
       {/* ── Dialogs ── */}
       {viewUser && <ViewDialog user={viewUser} onClose={() => setViewUser(null)} />}
-
-      {editOpen && (
-        <EditDialog
-          user={editUser as AppUser | null}
-          onClose={() => setEditOpen(false)}
-          onSave={handleSave}
-        />
-      )}
 
       {deleteTarget && (
         <Dialog open onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>

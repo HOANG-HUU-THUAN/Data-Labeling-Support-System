@@ -21,6 +21,9 @@ let nextId = 5;
 export const getUsers = (): Promise<AppUser[]> =>
   new Promise((resolve) => setTimeout(() => resolve([...USERS]), 300));
 
+export const getUserById = (id: number): Promise<AppUser | null> =>
+  new Promise((resolve) => setTimeout(() => resolve(USERS.find((u) => u.id === id) ?? null), 300));
+
 export const toggleLockUser = (id: number): Promise<void> =>
   new Promise((resolve) => {
     setTimeout(() => {
@@ -29,7 +32,7 @@ export const toggleLockUser = (id: number): Promise<void> =>
     }, 300);
   });
 
-export const updateUser = (id: number, patch: Partial<Pick<AppUser, 'name' | 'email' | 'role'>>): Promise<void> =>
+export const updateUser = (id: number, patch: Partial<Pick<AppUser, 'name' | 'email' | 'role' | 'password'>>): Promise<void> =>
   new Promise((resolve) => {
     setTimeout(() => {
       USERS = USERS.map((u) => (u.id === id ? { ...u, ...patch } : u));
