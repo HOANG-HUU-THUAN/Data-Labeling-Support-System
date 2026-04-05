@@ -33,11 +33,12 @@ export const getProjectStats = (projectId?: number): Promise<ProjectStats> =>
     return { totalImages: total, annotated, approved, rejected };
   });
 
-export const getProjectProgress = (): Promise<ProgressItem[]> =>
+export const getProjectProgress = (projectId?: number): Promise<ProgressItem[]> =>
   getTasks().then((tasks) => {
+    const t = projectId != null ? tasks.filter((x) => x.projectId === projectId) : tasks;
     const ORDER: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'SUBMITTED', 'APPROVED', 'REJECTED'];
     const counts: Partial<Record<TaskStatus, number>> = {};
-    for (const t of tasks) counts[t.status] = (counts[t.status] ?? 0) + 1;
+    for (const x of t) counts[x.status] = (counts[x.status] ?? 0) + 1;
     return ORDER.filter((s) => (counts[s] ?? 0) > 0).map((status) => ({ status, count: counts[status]! }));
   });
 
