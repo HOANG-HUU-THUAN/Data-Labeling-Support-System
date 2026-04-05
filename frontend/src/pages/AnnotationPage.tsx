@@ -11,6 +11,10 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LockIcon from '@mui/icons-material/Lock';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import UndoIcon from '@mui/icons-material/Undo';
+import RedoIcon from '@mui/icons-material/Redo';
+import Tooltip from '@mui/material/Tooltip';
 import { getTaskImages } from '../mock/annotatorMock';
 import type { AnnotationImage } from '../mock/annotatorMock';
 import { getTaskById } from '../mock/taskMock';
@@ -19,13 +23,28 @@ import type { Label } from '../types/label';
 import {
   getAnnotationsByImage,
   createAnnotation,
+  updateAnnotation,
   deleteAnnotation,
   lockImage,
   unlockImage,
+  replaceAnnotationsForImage,
 } from '../mock/annotationMock';
 import type { Annotation } from '../types/annotation';
 import AnnotationToolbar from '../components/AnnotationToolbar';
 import useAuthStore from '../store/authStore';
+import { submitTask } from '../mock/taskMock';
+
+type DragState =
+  | { type: 'draw'; startX: number; startY: number }
+  | { type: 'move'; annId: number; startMx: number; startMy: number; origX: number; origY: number }
+  | { type: 'resize'; annId: number; corner: 'tl' | 'tr' | 'bl' | 'br'; startMx: number; startMy: number; origX: number; origY: number; origW: number; origH: number };
+
+const CORNER_HANDLES = [
+  { key: 'tl' as const, cursor: 'nwse-resize', sx: { top: -5, left: -5 } },
+  { key: 'tr' as const, cursor: 'nesw-resize', sx: { top: -5, right: -5 } },
+  { key: 'bl' as const, cursor: 'nesw-resize', sx: { bottom: -5, left: -5 } },
+  { key: 'br' as const, cursor: 'nwse-resize', sx: { bottom: -5, right: -5 } },
+];
 
 const AnnotationPage = () => {
   const { taskId } = useParams<{ taskId: string }>();
@@ -44,10 +63,60 @@ const AnnotationPage = () => {
   // lock state
   const [isLocked, setIsLocked] = useState(false);
   const lockedImageRef = useRef<number | null>(null);
-  // drag state
-  const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
+  // selected box + drag
+  const [selectedBoxId, setSelectedBoxId] = useState<number | null>(null);
+  const dragModeRef = useRef<DragState | null>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const [previewBox, setPreviewBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Undo / redo
+  const historyRef = useRef<Annotation[][]>([]);
+  const historyIndexRef = useRef<number>(-1);
+  const currentAnnotationsRef = useRef<Annotation[]>([]);
+  const selectedImageRef = useRef<AnnotationImage | null>(null);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  /** Sync both state and the ref together. Never call setCurrentAnnotations directly. */
+  const setAnnotations = (anns: Annotation[]) => {
+    currentAnnotationsRef.current = anns;
+    setCurrentAnnotations(anns);
+  };
+
+  /** Push a snapshot onto the undo stack (trims the redo tail). */
+  const pushHistory = (anns: Annotation[]) => {
+    historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
+    historyRef.current.push([...anns]);
+    historyIndexRef.current = historyRef.current.length - 1;
+    setCanUndo(historyIndexRef.current > 0);
+    setCanRedo(false);
+  };
+
+  /** Seed fresh history for a newly loaded image. */
+  const seedHistory = (anns: Annotation[]) => {
+    historyRef.current = [[...anns]];
+    historyIndexRef.current = 0;
+    setCanUndo(false);
+    setCanRedo(false);
+  };
+
+  /** Jump to a history index and restore state. */
+  const applySnapshot = (index: number) => {
+    historyIndexRef.current = index;
+    const snapshot = historyRef.current[index];
+    setAnnotations([...snapshot]);
+    setCanUndo(index > 0);
+    setCanRedo(index < historyRef.current.length - 1);
+    if (selectedImageRef.current) {
+      replaceAnnotationsForImage(selectedImageRef.current.id, snapshot);
+    }
+  };
+
+  // Keep selectedImageRef in sync for use inside keyboard handler
+  useEffect(() => { selectedImageRef.current = selectedImage; }, [selectedImage]);
 
   // Initial load: task images + labels + annotation counts
   useEffect(() => {
@@ -67,7 +136,7 @@ const AnnotationPage = () => {
         setAnnotationCounts(counts);
         if (imgs.length > 0) {
           setSelectedImage(imgs[0]);
-          setCurrentAnnotations(results[0] ?? []);
+          setAnnotations(results[0] ?? []);
         }
       });
       setLoading(false);
@@ -98,70 +167,210 @@ const AnnotationPage = () => {
     };
   }, []);
 
-  // Load annotations whenever selected image changes
+  // Load annotations whenever selected image changes; also seeds undo/redo history
   useEffect(() => {
     if (!selectedImage) return;
     let cancelled = false;
     getAnnotationsByImage(selectedImage.id).then((anns) => {
-      if (!cancelled) setCurrentAnnotations(anns);
+      if (!cancelled) {
+        setAnnotations(anns);
+        seedHistory(anns);
+      }
     });
     return () => { cancelled = true; };
   }, [selectedImage]);
 
+  // Keyboard shortcuts: Ctrl+Z = undo, Ctrl+Y = redo
+  // All values accessed through refs → safe with empty deps array
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!e.ctrlKey) return;
+      const applyIdx = (newIdx: number) => {
+        historyIndexRef.current = newIdx;
+        const snap = historyRef.current[newIdx];
+        currentAnnotationsRef.current = [...snap];
+        setCurrentAnnotations([...snap]);
+        setCanUndo(newIdx > 0);
+        setCanRedo(newIdx < historyRef.current.length - 1);
+        if (selectedImageRef.current)
+          replaceAnnotationsForImage(selectedImageRef.current.id, snap);
+      };
+      if (e.key === 'z') {
+        e.preventDefault();
+        if (historyIndexRef.current > 0) applyIdx(historyIndexRef.current - 1);
+      } else if (e.key === 'y') {
+        e.preventDefault();
+        if (historyIndexRef.current < historyRef.current.length - 1)
+          applyIdx(historyIndexRef.current + 1);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const getColor = (labelId: number) =>
     labels.find((l) => l.id === labelId)?.color ?? '#9e9e9e';
 
-  const getRelativePos = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
+  const getRelativePos = (e: React.MouseEvent) => {
+    const el = canvasRef.current;
+    if (!el) return { x: 0, y: 0 };
+    const rect = el.getBoundingClientRect();
     return {
       x: ((e.clientX - rect.left) / rect.width) * 100,
       y: ((e.clientY - rect.top) / rect.height) * 100,
     };
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!selectedLabel || !selectedImage || saving || isLocked) return;
+  // Finalize draw/move/resize on mouseUp or mouseLeave
+  const finalizeDrag = (e: React.MouseEvent) => {
+    const mode = dragModeRef.current;
+    dragModeRef.current = null;
+    if (!mode) return;
+
+    if (mode.type === 'draw') {
+      setPreviewBox(null);
+      const pos = getRelativePos(e);
+      const x = Math.min(mode.startX, pos.x);
+      const y = Math.min(mode.startY, pos.y);
+      const w = Math.abs(pos.x - mode.startX);
+      const h = Math.abs(pos.y - mode.startY);
+      if (w <= 1 || h <= 1 || !selectedLabel || !selectedImage) return;
+      setSaving(true);
+      createAnnotation({ imageId: selectedImage.id, labelId: selectedLabel.id, x, y, w, h }).then((ann) => {
+        const next = [...currentAnnotationsRef.current, ann];
+        setAnnotations(next);
+        pushHistory(next);
+        setAnnotationCounts((prev) => ({ ...prev, [selectedImage.id]: (prev[selectedImage.id] ?? 0) + 1 }));
+        setSaving(false);
+      });
+    } else if (mode.type === 'move') {
+      const pos = getRelativePos(e);
+      const dx = pos.x - mode.startMx;
+      const dy = pos.y - mode.startMy;
+      const finalAnns = currentAnnotationsRef.current.map((a) =>
+        a.id === mode.annId ? { ...a, x: mode.origX + dx, y: mode.origY + dy } : a
+      );
+      setAnnotations(finalAnns);
+      pushHistory(finalAnns);
+      updateAnnotation(mode.annId, { x: mode.origX + dx, y: mode.origY + dy });
+    } else if (mode.type === 'resize') {
+      const pos = getRelativePos(e);
+      const dx = pos.x - mode.startMx;
+      const dy = pos.y - mode.startMy;
+      let x = mode.origX, y = mode.origY, w = mode.origW, h = mode.origH;
+      if (mode.corner === 'tl') { x = mode.origX + dx; y = mode.origY + dy; w = mode.origW - dx; h = mode.origH - dy; }
+      else if (mode.corner === 'tr') { y = mode.origY + dy; w = mode.origW + dx; h = mode.origH - dy; }
+      else if (mode.corner === 'bl') { x = mode.origX + dx; w = mode.origW - dx; h = mode.origH + dy; }
+      else if (mode.corner === 'br') { w = mode.origW + dx; h = mode.origH + dy; }
+      if (w > 1 && h > 1) {
+        const finalAnns = currentAnnotationsRef.current.map((a) =>
+          a.id === mode.annId ? { ...a, x, y, w, h } : a
+        );
+        setAnnotations(finalAnns);
+        pushHistory(finalAnns);
+        updateAnnotation(mode.annId, { x, y, w, h });
+      }
+    }
+  };
+
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isLocked || !selectedLabel || !selectedImage) return;
+    e.preventDefault();
     const pos = getRelativePos(e);
-    setDrawStart(pos);
+    dragModeRef.current = { type: 'draw', startX: pos.x, startY: pos.y };
     setPreviewBox({ x: pos.x, y: pos.y, w: 0, h: 0 });
+    setSelectedBoxId(null);
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!drawStart) return;
+  const handleBoxMouseDown = (e: React.MouseEvent, ann: Annotation) => {
+    if (isLocked) return;
+    e.stopPropagation();
+    e.preventDefault();
+    setSelectedBoxId(ann.id);
     const pos = getRelativePos(e);
-    setPreviewBox({
-      x: Math.min(drawStart.x, pos.x),
-      y: Math.min(drawStart.y, pos.y),
-      w: Math.abs(pos.x - drawStart.x),
-      h: Math.abs(pos.y - drawStart.y),
-    });
+    dragModeRef.current = { type: 'move', annId: ann.id, startMx: pos.x, startMy: pos.y, origX: ann.x, origY: ann.y };
   };
 
-  const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!drawStart || !selectedLabel || !selectedImage) return;
+  const handleCornerMouseDown = (e: React.MouseEvent, ann: Annotation, corner: 'tl' | 'tr' | 'bl' | 'br') => {
+    if (isLocked) return;
+    e.stopPropagation();
+    e.preventDefault();
     const pos = getRelativePos(e);
-    const x = Math.min(drawStart.x, pos.x);
-    const y = Math.min(drawStart.y, pos.y);
-    const w = Math.abs(pos.x - drawStart.x);
-    const h = Math.abs(pos.y - drawStart.y);
-    setDrawStart(null);
-    setPreviewBox(null);
-    if (w <= 1 || h <= 1) return;
+    dragModeRef.current = { type: 'resize', annId: ann.id, corner, startMx: pos.x, startMy: pos.y, origX: ann.x, origY: ann.y, origW: ann.w, origH: ann.h };
+  };
 
-    setSaving(true);
-    createAnnotation({ imageId: selectedImage.id, labelId: selectedLabel.id, x, y, w, h }).then((ann) => {
-      setCurrentAnnotations((prev) => [...prev, ann]);
-      setAnnotationCounts((prev) => ({ ...prev, [selectedImage.id]: (prev[selectedImage.id] ?? 0) + 1 }));
-      setSaving(false);
-    });
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const mode = dragModeRef.current;
+    if (!mode) return;
+    const pos = getRelativePos(e);
+    if (mode.type === 'draw') {
+      setPreviewBox({
+        x: Math.min(mode.startX, pos.x),
+        y: Math.min(mode.startY, pos.y),
+        w: Math.abs(pos.x - mode.startX),
+        h: Math.abs(pos.y - mode.startY),
+      });
+    } else if (mode.type === 'move') {
+      const dx = pos.x - mode.startMx;
+      const dy = pos.y - mode.startMy;
+      setAnnotations(
+        currentAnnotationsRef.current.map((a) =>
+          a.id === mode.annId ? { ...a, x: mode.origX + dx, y: mode.origY + dy } : a
+        )
+      );
+    } else if (mode.type === 'resize') {
+      const dx = pos.x - mode.startMx;
+      const dy = pos.y - mode.startMy;
+      let x = mode.origX, y = mode.origY, w = mode.origW, h = mode.origH;
+      if (mode.corner === 'tl') { x = mode.origX + dx; y = mode.origY + dy; w = mode.origW - dx; h = mode.origH - dy; }
+      else if (mode.corner === 'tr') { y = mode.origY + dy; w = mode.origW + dx; h = mode.origH - dy; }
+      else if (mode.corner === 'bl') { x = mode.origX + dx; w = mode.origW - dx; h = mode.origH + dy; }
+      else if (mode.corner === 'br') { w = mode.origW + dx; h = mode.origH + dy; }
+      if (w > 1 && h > 1) {
+        setAnnotations(
+          currentAnnotationsRef.current.map((a) =>
+            a.id === mode.annId ? { ...a, x, y, w, h } : a
+          )
+        );
+      }
+    }
+  };
+
+  const handleCanvasMouseUp = (e: React.MouseEvent<HTMLDivElement>) => finalizeDrag(e);
+
+  const handleCanvasMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (dragModeRef.current?.type === 'draw') {
+      dragModeRef.current = null;
+      setPreviewBox(null);
+    } else {
+      finalizeDrag(e);
+    }
   };
 
   const handleDeleteAnnotation = (annId: number) => {
     if (!selectedImage) return;
     deleteAnnotation(annId).then(() => {
-      setCurrentAnnotations((prev) => prev.filter((a) => a.id !== annId));
+      const next = currentAnnotationsRef.current.filter((a) => a.id !== annId);
+      setAnnotations(next);
+      pushHistory(next);
       setAnnotationCounts((prev) => ({ ...prev, [selectedImage.id]: Math.max(0, (prev[selectedImage.id] ?? 1) - 1) }));
     });
+  };
+
+  const handleSubmit = () => {
+    if (!taskId) return;
+    // Validate: every image must have at least 1 annotation
+    const unlabeled = images.filter((img) => (annotationCounts[img.id] ?? 0) === 0);
+    if (unlabeled.length > 0) {
+      setSubmitError(`Vẫn còn ${unlabeled.length} ảnh chưa gán nhãn. Vui lòng gán nhãn tất cả ảnh trước khi nộp.`);
+      return;
+    }
+    if (!window.confirm('Bạn có chắc muốn nộp task? Sau khi nộp bạn sẽ không thể chỉnh sửa thêm.')) return;
+    setSubmitting(true);
+    if (lockedImageRef.current !== null) unlockImage(lockedImageRef.current);
+    submitTask(Number(taskId)).then(() => {
+      navigate('/my-tasks');
+    }).catch(() => setSubmitting(false));
   };
 
   return (
@@ -181,12 +390,51 @@ const AnnotationPage = () => {
         <Typography variant="h5" fontWeight="bold">
           Workspace gán nhãn — Task #{taskId}
         </Typography>
-        {saving && (
-          <Box display="flex" alignItems="center" gap={1} ml="auto">
-            <CircularProgress size={14} />
-            <Typography variant="caption" color="text.secondary">Đang lưu...</Typography>
-          </Box>
-        )}
+        <Box ml="auto" display="flex" alignItems="center" gap={1}>
+          {saving && (
+            <Box display="flex" alignItems="center" gap={1} mr={1}>
+              <CircularProgress size={14} />
+              <Typography variant="caption" color="text.secondary">Đang lưu...</Typography>
+            </Box>
+          )}
+          <Tooltip title="Hoàn tác (Ctrl+Z)">
+            <span>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={!canUndo}
+                onClick={() => { if (historyIndexRef.current > 0) applySnapshot(historyIndexRef.current - 1); }}
+                sx={{ minWidth: 36, px: 1 }}
+              >
+                <UndoIcon fontSize="small" />
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title="Làm lại (Ctrl+Y)">
+            <span>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={!canRedo}
+                onClick={() => { if (historyIndexRef.current < historyRef.current.length - 1) applySnapshot(historyIndexRef.current + 1); }}
+                sx={{ minWidth: 36, px: 1 }}
+              >
+                <RedoIcon fontSize="small" />
+              </Button>
+            </span>
+          </Tooltip>
+          {!loading && images.length > 0 && (
+            <Button
+              variant="contained"
+              color="primary"
+              disabled={submitting || saving}
+              onClick={handleSubmit}
+              sx={{ ml: 1 }}
+            >
+              {submitting ? <CircularProgress size={18} color="inherit" /> : 'Nộp task'}
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {/* TOOLBAR */}
@@ -196,6 +444,12 @@ const AnnotationPage = () => {
           selectedLabel={selectedLabel}
           onLabelChange={setSelectedLabel}
         />
+      )}
+
+      {submitError && (
+        <Alert severity="error" onClose={() => setSubmitError(null)} sx={{ mb: 1 }}>
+          {submitError}
+        </Alert>
       )}
 
       <Divider sx={{ mb: 1 }} />
@@ -230,7 +484,7 @@ const AnnotationPage = () => {
             {images.map((img) => (
               <Box
                 key={img.id}
-                onClick={() => { setCurrentAnnotations([]); setSelectedImage(img); }}
+                onClick={() => { setAnnotations([]); setSelectedImage(img); }}
                 sx={{ position: 'relative', cursor: 'pointer' }}
               >
                 <Box
@@ -298,63 +552,125 @@ const AnnotationPage = () => {
               overflow="hidden"
             >
             {selectedImage ? (
-                <Box position="relative" display="inline-block" maxWidth="100%">
+                <Box
+                  ref={canvasRef}
+                  position="relative"
+                  display="inline-block"
+                  maxWidth="100%"
+                  sx={{
+                    userSelect: 'none',
+                    cursor: isLocked ? 'default' : selectedLabel ? 'crosshair' : 'default',
+                  }}
+                  onMouseDown={handleCanvasMouseDown}
+                  onMouseMove={handleCanvasMouseMove}
+                  onMouseUp={handleCanvasMouseUp}
+                  onMouseLeave={handleCanvasMouseLeave}
+                >
                   {/* Base image */}
                   <Box
                     component="img"
                     src={selectedImage.url}
                     alt={selectedImage.name}
+                    draggable={false}
                     sx={{
                       display: 'block',
                       maxWidth: '100%',
                       maxHeight: 'calc(100vh - 260px)',
-                      userSelect: 'none',
                       pointerEvents: 'none',
                     }}
                   />
 
                   {/* Saved annotations */}
-                  {currentAnnotations.map((ann) => (
-                    <Box
-                      key={ann.id}
-                      sx={{
-                        position: 'absolute',
-                        left: `${ann.x}%`,
-                        top: `${ann.y}%`,
-                        width: `${ann.w}%`,
-                        height: `${ann.h}%`,
-                        border: `2px solid ${getColor(ann.labelId)}`,
-                        pointerEvents: 'auto',
-                        cursor: 'pointer',
-                        '&:hover': { opacity: 0.7 },
-                      }}
-                      title="Nhấp chuột phải để xóa"
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        handleDeleteAnnotation(ann.id);
-                      }}
-                    >
-                      <Typography
+                  {currentAnnotations.map((ann) => {
+                    const color = getColor(ann.labelId);
+                    const isSelected = selectedBoxId === ann.id;
+                    return (
+                      <Box
+                        key={ann.id}
+                        onMouseDown={(e) => handleBoxMouseDown(e, ann)}
+                        onContextMenu={(e) => { e.preventDefault(); if (!isLocked) handleDeleteAnnotation(ann.id); }}
                         sx={{
                           position: 'absolute',
-                          top: -20,
-                          left: -2,
-                          fontSize: 11,
-                          lineHeight: '18px',
-                          bgcolor: getColor(ann.labelId),
-                          color: '#fff',
-                          px: 0.6,
-                          borderRadius: '3px 3px 0 0',
-                          whiteSpace: 'nowrap',
-                          pointerEvents: 'none',
+                          left: `${ann.x}%`,
+                          top: `${ann.y}%`,
+                          width: `${ann.w}%`,
+                          height: `${ann.h}%`,
+                          border: `${isSelected ? 3 : 2}px solid ${color}`,
+                          outline: isSelected ? '2px solid rgba(255,255,255,0.55)' : 'none',
+                          outlineOffset: '-2px',
+                          cursor: isLocked ? 'default' : 'move',
+                          pointerEvents: 'auto',
+                          boxSizing: 'border-box',
+                          '&:hover': {
+                            border: `3px solid ${color}`,
+                            outline: `2px solid rgba(255,255,255,0.45)`,
+                            outlineOffset: '-2px',
+                          },
                         }}
                       >
-                        {labels.find((l) => l.id === ann.labelId)?.name ?? ''}
-                      </Typography>
-                    </Box>
-                  ))}
+                        <Typography
+                          sx={{
+                            position: 'absolute',
+                            top: -20,
+                            left: -2,
+                            fontSize: 11,
+                            lineHeight: '18px',
+                            bgcolor: color,
+                            color: '#fff',
+                            px: 0.6,
+                            borderRadius: '3px 3px 0 0',
+                            whiteSpace: 'nowrap',
+                            pointerEvents: 'none',
+                          }}
+                        >
+                          {labels.find((l) => l.id === ann.labelId)?.name ?? ''}
+                        </Typography>
+                        {/* Delete button — shown only on selected box */}
+                        {isSelected && !isLocked && (
+                          <Box
+                            onMouseDown={(e) => { e.stopPropagation(); handleDeleteAnnotation(ann.id); }}
+                            title="Xóa box"
+                            sx={{
+                              position: 'absolute',
+                              top: -22,
+                              right: -2,
+                              width: 18,
+                              height: 18,
+                              bgcolor: '#d32f2f',
+                              color: '#fff',
+                              borderRadius: '3px 3px 0 0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              '&:hover': { bgcolor: '#b71c1c' },
+                            }}
+                          >
+                            <DeleteForeverIcon sx={{ fontSize: 13 }} />
+                          </Box>
+                        )}
+                        {/* Corner resize handles — shown only on selected box */}
+                        {isSelected && !isLocked && CORNER_HANDLES.map(({ key, cursor, sx }) => (
+                          <Box
+                            key={key}
+                            onMouseDown={(e) => handleCornerMouseDown(e, ann, key)}
+                            sx={{
+                              position: 'absolute',
+                              width: 8,
+                              height: 8,
+                              bgcolor: '#fff',
+                              border: `2px solid ${color}`,
+                              borderRadius: '50%',
+                              cursor,
+                              ...sx,
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    );
+                  })}
 
-                  {/* Live preview box while dragging */}
+                  {/* Live preview box while drawing */}
                   {previewBox && selectedLabel && (
                     <Box
                       sx={{
@@ -368,22 +684,6 @@ const AnnotationPage = () => {
                       }}
                     />
                   )}
-
-                  {/* Transparent overlay — captures mouse events for drawing */}
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      inset: 0,
-                      cursor: isLocked ? 'default' : selectedLabel ? 'crosshair' : 'not-allowed',
-                    }}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={() => {
-                      setDrawStart(null);
-                      setPreviewBox(null);
-                    }}
-                  />
                 </Box>
             ) : (
               <Typography variant="body2" color="text.secondary">

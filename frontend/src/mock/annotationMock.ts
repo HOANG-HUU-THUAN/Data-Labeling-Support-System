@@ -61,3 +61,11 @@ export const deleteAnnotation = (id: number): Promise<void> =>
       resolve();
     }, 300)
   );
+
+/** Synchronous — replace all annotations for an image (used by undo/redo). */
+export const replaceAnnotationsForImage = (imageId: number, replacements: Annotation[]): void => {
+  annotations = [
+    ...annotations.filter((a) => a.imageId !== imageId),
+    ...replacements.map((a) => ({ ...a })),
+  ];
+};

@@ -72,3 +72,13 @@ export const updateTaskStatus = (id: number, status: Task['status']): Promise<Ta
       resolve({ ...tasks[idx] });
     }, 300)
   );
+
+export const submitTask = (id: number): Promise<Task> =>
+  new Promise((resolve, reject) =>
+    setTimeout(() => {
+      const idx = tasks.findIndex((t) => t.id === id);
+      if (idx === -1) { reject(new Error('Task not found')); return; }
+      tasks[idx] = { ...tasks[idx], status: 'SUBMITTED' };
+      resolve({ ...tasks[idx] });
+    }, 300)
+  );
