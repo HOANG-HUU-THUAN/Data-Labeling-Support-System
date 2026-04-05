@@ -15,6 +15,7 @@ import ExportPage from '../pages/ExportPage';
 import MyTasksPage from '../pages/MyTasksPage';
 import AnnotationPage from '../pages/AnnotationPage';
 import ReviewPage from '../pages/ReviewPage';
+import ReviewDetailPage from '../pages/ReviewDetailPage';
 import ProjectList from '../pages/ProjectListPage';
 import ProjectCreate from '../pages/ProjectCreate';
 import ProjectDetail from '../pages/ProjectDetail';
@@ -57,7 +58,7 @@ const AppRoutes = () => {
 
       {/* REVIEWER only */}
       <Route path="/review" element={<ProtectedRoute roles={['REVIEWER']}>{withLayout(<ReviewPage />)}</ProtectedRoute>} />
-      <Route path="/review/:taskId" element={<ProtectedRoute roles={['REVIEWER']}>{withLayout(<ReviewPage />)}</ProtectedRoute>} />
+      <Route path="/review/:taskId" element={<ProtectedRoute roles={['REVIEWER']}>{withLayout(<ReviewDetailPage />)}</ProtectedRoute>} />
     </Routes>
   );
 };
