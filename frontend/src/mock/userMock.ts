@@ -4,15 +4,16 @@ export interface AppUser {
   id: number;
   name: string;
   email: string;
+  password: string;
   role: Role;
   isLocked: boolean;
 }
 
-let USERS: AppUser[] = [
-  { id: 1, name: 'Admin',     email: 'admin@gmail.com',     role: 'ADMIN',     isLocked: false },
-  { id: 2, name: 'Manager',   email: 'manager@gmail.com',   role: 'MANAGER',   isLocked: false },
-  { id: 3, name: 'Annotator', email: 'annotator@gmail.com', role: 'ANNOTATOR', isLocked: false },
-  { id: 4, name: 'Reviewer',  email: 'reviewer@gmail.com',  role: 'REVIEWER',  isLocked: false },
+export let USERS: AppUser[] = [
+  { id: 1, name: 'Admin',     email: 'admin@gmail.com',     password: '123456', role: 'ADMIN',     isLocked: false },
+  { id: 2, name: 'Manager',   email: 'manager@gmail.com',   password: '123456', role: 'MANAGER',   isLocked: false },
+  { id: 3, name: 'Annotator', email: 'annotator@gmail.com', password: '123456', role: 'ANNOTATOR', isLocked: false },
+  { id: 4, name: 'Reviewer',  email: 'reviewer@gmail.com',  password: '123456', role: 'REVIEWER',  isLocked: false },
 ];
 
 let nextId = 5;

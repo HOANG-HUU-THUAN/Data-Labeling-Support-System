@@ -33,6 +33,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import type { Role } from '../types/auth';
 import {
   type AppUser,
@@ -100,25 +101,47 @@ function EditDialog({
 }: {
   user: AppUser | null;
   onClose: () => void;
-  onSave: (data: { name: string; email: string; role: Role }) => Promise<void>;
+  onSave: (data: { name: string; email: string; role: Role; password?: string }) => Promise<void>;
 }) {
   const isCreate = !user;
   const [form, setForm] = useState({
     name: user?.name ?? '',
     email: user?.email ?? '',
     role: user?.role ?? ('ANNOTATOR' as Role),
+    password: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const handleSave = async () => {
-    if (!form.name.trim() || !form.email.trim()) {
-      setError('Vui lòng điền đầy đủ thông tin.');
+    if (!form.name.trim()) {
+      setError('Tên không được để trống.');
       return;
+    }
+    if (!form.email.trim()) {
+      setError('Email không được để trống.');
+      return;
+    }
+    if (!EMAIL_RE.test(form.email.trim())) {
+      setError('Email không đúng định dạng.');
+      return;
+    }
+    if (isCreate) {
+      if (!form.password) {
+        setError('Mật khẩu không được để trống.');
+        return;
+      }
+      if (form.password.length < 6) {
+        setError('Mật khẩu phải có ít nhất 6 ký tự.');
+        return;
+      }
     }
     setSaving(true);
     try {
-      await onSave(form);
+      await onSave({ name: form.name, email: form.email, role: form.role, ...(isCreate ? { password: form.password } : {}) });
       onClose();
     } finally {
       setSaving(false);
@@ -128,7 +151,7 @@ function EditDialog({
   return (
     <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle sx={{ fontWeight: 700 }}>
-        {isCreate ? 'Thêm người dùng' : 'Chỉnh sửa người dùng'}
+        {isCreate ? 'Tạo người dùng' : 'Chỉnh sửa người dùng'}
       </DialogTitle>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: '16px !important' }}>
         {error && (
@@ -148,6 +171,32 @@ function EditDialog({
           value={form.email}
           onChange={(e) => { setForm((f) => ({ ...f, email: e.target.value })); setError(null); }}
         />
+        {isCreate && (
+          <TextField
+            label="Mật khẩu"
+            size="small"
+            fullWidth
+            type={showPassword ? 'text' : 'password'}
+            value={form.password}
+            onChange={(e) => { setForm((f) => ({ ...f, password: e.target.value })); setError(null); }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    edge="end"
+                    onClick={() => setShowPassword((v) => !v)}
+                    tabIndex={-1}
+                  >
+                    {showPassword
+                      ? <VisibilityOffOutlinedIcon fontSize="small" />
+                      : <VisibilityOutlinedIcon fontSize="small" />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+        )}
         <FormControl fullWidth size="small">
           <InputLabel>Role</InputLabel>
           <Select
@@ -171,7 +220,7 @@ function EditDialog({
           onClick={handleSave}
           sx={{ borderRadius: 3, textTransform: 'none', fontWeight: 600 }}
         >
-          {saving ? <CircularProgress size={18} color="inherit" /> : isCreate ? 'Thêm' : 'Lưu'}
+          {saving ? <CircularProgress size={18} color="inherit" /> : isCreate ? 'Tạo' : 'Lưu'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -233,10 +282,10 @@ const UsersPage = () => {
     setEditOpen(true);
   };
 
-  const handleSave = async (data: { name: string; email: string; role: Role }) => {
+  const handleSave = async (data: { name: string; email: string; role: Role; password?: string }) => {
     if (editUser === null) {
       // create
-      const created = await createUser({ ...data, isLocked: false });
+      const created = await createUser({ ...data, password: data.password ?? '', isLocked: false });
       setUsers((prev) => [...prev, created]);
     } else {
       // update
@@ -260,7 +309,7 @@ const UsersPage = () => {
           onClick={openCreate}
           sx={{ borderRadius: 3, textTransform: 'none', fontWeight: 600 }}
         >
-          Thêm người dùng
+          Tạo người dùng
         </Button>
       </Box>
 
