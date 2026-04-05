@@ -68,6 +68,7 @@ const AnnotationPage = () => {
   const dragModeRef = useRef<DragState | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [previewBox, setPreviewBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [task, setTask] = useState<import('../types/task').Task | null>(null);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -124,6 +125,7 @@ const AnnotationPage = () => {
     const id = Number(taskId);
     Promise.all([getTaskImages(id), getTaskById(id)]).then(([imgs, task]) => {
       setImages(imgs);
+      if (task) setTask(task);
       if (task) {
         getLabelsByProject(task.projectId).then((lbls) => {
           setLabels(lbls);
@@ -444,6 +446,32 @@ const AnnotationPage = () => {
           selectedLabel={selectedLabel}
           onLabelChange={setSelectedLabel}
         />
+      )}
+
+      {task?.status === 'REJECTED' && (
+        <Alert
+          severity="warning"
+          sx={{
+            mb: 1,
+            bgcolor: '#fff3cd',
+            border: '1px solid #ffc107',
+            '& .MuiAlert-icon': { color: '#856404' },
+          }}
+        >
+          <Typography variant="body2" fontWeight={700} mb={0.5}>
+            Task bị từ chối
+          </Typography>
+          {task.errorType && (
+            <Typography variant="body2">
+              <strong>Loại lỗi:</strong> {task.errorType}
+            </Typography>
+          )}
+          {task.reviewComment && (
+            <Typography variant="body2">
+              <strong>Nhận xét:</strong> {task.reviewComment}
+            </Typography>
+          )}
+        </Alert>
       )}
 
       {submitError && (

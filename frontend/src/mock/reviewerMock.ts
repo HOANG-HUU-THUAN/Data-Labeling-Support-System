@@ -1,4 +1,4 @@
-import { getTasks, getTaskById, updateTaskStatus } from './taskMock';
+import { getTasks, getTaskById, updateTaskStatus, rejectTaskData } from './taskMock';
 import { getTaskImages } from './annotatorMock';
 import { getAnnotationsByImage } from './annotationMock';
 import { getLabelsByProject } from './labelMock';
@@ -47,7 +47,7 @@ export const rejectTask = (
   new Promise((resolve) =>
     setTimeout(() => {
       reviewResults[taskId] = payload;
-      updateTaskStatus(taskId, 'REJECTED').then(() => resolve());
+      rejectTaskData(taskId, payload.comment, payload.errorType).then(() => resolve());
     }, 300)
   );
 

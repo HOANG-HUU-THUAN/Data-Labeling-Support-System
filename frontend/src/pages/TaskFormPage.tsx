@@ -21,13 +21,10 @@ import {
 import { getProjects } from '../mock/projectMock';
 import { getDatasetsByProject } from '../mock/datasetMock';
 import { createTask, getTaskById, updateTask } from '../mock/taskMock';
+import { getUsers } from '../mock/userMock';
+import type { AppUser } from '../mock/userMock';
 import type { Project } from '../types/project';
 import type { Dataset } from '../types/dataset';
-
-// Annotators from mock (static list derived from authMock)
-const ANNOTATORS = [
-  { id: 3, name: 'Annotator' },
-];
 
 const TaskFormPage = () => {
   const navigate = useNavigate();
@@ -42,15 +39,19 @@ const TaskFormPage = () => {
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [annotators, setAnnotators] = useState<AppUser[]>([]);
   const [loadingDatasets, setLoadingDatasets] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Validation errors
   const [errors, setErrors] = useState({ name: false, projectId: false, datasetIds: false });
 
-  // Load projects once
+  // Load projects and annotators once
   useEffect(() => {
     getProjects().then(setProjects);
+    getUsers().then((all) =>
+      setAnnotators(all.filter((u) => u.role === 'ANNOTATOR' && !u.isLocked))
+    );
   }, []);
 
   // In edit mode: load existing task data and its datasets
@@ -220,9 +221,9 @@ const TaskFormPage = () => {
               onChange={(e) => setAssigneeId(e.target.value as number | '')}
             >
               <MenuItem value="">— Không gán —</MenuItem>
-              {ANNOTATORS.map((u) => (
+              {annotators.map((u) => (
                 <MenuItem key={u.id} value={u.id}>
-                  {u.name}
+                  {u.name} ({u.email})
                 </MenuItem>
               ))}
             </Select>

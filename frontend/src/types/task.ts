@@ -7,4 +7,6 @@ export interface Task {
   datasetIds: number[];
   status: TaskStatus;
   assigneeId?: number;
+  reviewComment?: string;
+  errorType?: string;
 }
