@@ -5,15 +5,8 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  Divider,
   LinearProgress,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Typography,
 } from '@mui/material';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
@@ -23,11 +16,10 @@ import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import {
   getProjectStats,
   getProjectProgress,
-  getUserPerformance,
   type ProjectStats,
   type ProgressItem,
-  type UserPerformance,
 } from '../mock/dashboardMock';
+import PerformanceWidget from '../features/dashboard/components/PerformanceWidget';
 
 const STATUS_LABEL: Record<string, string> = {
   TODO: 'Chưa làm',
@@ -85,17 +77,15 @@ const StatCard = ({ label, value, icon, color, bg }: StatCardProps) => (
 const DashboardPage = () => {
   const [stats, setStats] = useState<ProjectStats | null>(null);
   const [progress, setProgress] = useState<ProgressItem[]>([]);
-  const [performance, setPerformance] = useState<UserPerformance[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getProjectStats(), getProjectProgress(), getUserPerformance()]).then(
-      ([s, p, u]) => {
+    Promise.all([getProjectStats(), getProjectProgress()]).then(
+      ([s, p]) => {
         if (cancelled) return;
         setStats(s);
         setProgress(p);
-        setPerformance(u);
         setLoading(false);
       }
     );
@@ -162,58 +152,7 @@ const DashboardPage = () => {
       </Paper>
 
       {/* ── User Performance ── */}
-      <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
-        <Box px={2.5} pt={2.5} pb={1.5}>
-          <Typography variant="h6" fontWeight={700}>Hiệu suất annotator</Typography>
-        </Box>
-        <Divider />
-        {performance.length === 0 ? (
-          <Box px={2.5} py={3}>
-            <Typography variant="body2" color="text.secondary">Chưa có dữ liệu.</Typography>
-          </Box>
-        ) : (
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow sx={{ bgcolor: 'action.hover' }}>
-                  {['Annotator', 'Đã gán nhãn', 'Đã duyệt', 'Bị từ chối', 'Tỉ lệ duyệt'].map((h) => (
-                    <TableCell key={h} sx={{ fontWeight: 700, py: 1.5 }}>{h}</TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {performance.map((u) => {
-                  const rate = u.annotated > 0 ? Math.round((u.approved / u.annotated) * 100) : 0;
-                  return (
-                    <TableRow key={u.name} hover>
-                      <TableCell sx={{ fontWeight: 600 }}>{u.name}</TableCell>
-                      <TableCell>{u.annotated}</TableCell>
-                      <TableCell sx={{ color: '#2e7d32', fontWeight: 600 }}>{u.approved}</TableCell>
-                      <TableCell sx={{ color: '#d32f2f', fontWeight: 600 }}>{u.rejected}</TableCell>
-                      <TableCell>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <LinearProgress
-                            variant="determinate"
-                            value={rate}
-                            sx={{
-                              flex: 1, height: 6, borderRadius: 3,
-                              bgcolor: '#f0f0f0',
-                              '& .MuiLinearProgress-bar': { bgcolor: '#2e7d32', borderRadius: 3 },
-                            }}
-                          />
-                          <Typography variant="caption" fontWeight={600} minWidth={32}>
-                            {rate}%
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Paper>
+      <PerformanceWidget />
     </Box>
   );
 };

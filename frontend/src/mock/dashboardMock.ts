@@ -1,6 +1,9 @@
 import { getTasks } from './taskMock';
 import { getUsers } from './userMock';
 import type { TaskStatus } from '../types/task';
+import type { UserPerformance } from '../types/performance';
+
+export type { UserPerformance };
 
 export interface ProjectStats {
   totalImages: number;
@@ -12,13 +15,6 @@ export interface ProjectStats {
 export interface ProgressItem {
   status: TaskStatus;
   count: number;
-}
-
-export interface UserPerformance {
-  name: string;
-  annotated: number;
-  approved: number;
-  rejected: number;
 }
 
 export const getProjectStats = (projectId?: number): Promise<ProjectStats> =>
@@ -49,6 +45,7 @@ export const getUserPerformance = (): Promise<UserPerformance[]> =>
       const myTasks = tasks.filter((t) => t.assigneeId === u.id);
       const inWork = ['IN_PROGRESS', 'SUBMITTED', 'APPROVED', 'REJECTED'] as TaskStatus[];
       return {
+        userId: u.id,
         name: u.name,
         annotated: myTasks.filter((t) => inWork.includes(t.status)).length,
         approved: myTasks.filter((t) => t.status === 'APPROVED').length,
