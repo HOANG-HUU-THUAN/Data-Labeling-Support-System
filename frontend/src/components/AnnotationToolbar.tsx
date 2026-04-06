@@ -1,14 +1,45 @@
-import { Box, FormControl, InputLabel, MenuItem, Select, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, FormControl, InputLabel, MenuItem, Select, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from '@mui/material';
+import RectangleOutlinedIcon from '@mui/icons-material/RectangleOutlined';
+import PolylineOutlinedIcon from '@mui/icons-material/PolylineOutlined';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import type { Label } from '../types/label';
+import type { AnnotationType } from '../types/annotation';
 
 interface Props {
   labels: Label[];
   selectedLabel: Label | null;
   onLabelChange: (label: Label | null) => void;
+  tool: AnnotationType;
+  onToolChange: (tool: AnnotationType) => void;
+  onAutoLabel: () => void;
+  aiLoading: boolean;
+  hasImage: boolean;
 }
 
-const AnnotationToolbar = ({ labels, selectedLabel, onLabelChange }: Props) => (
-  <Box display="flex" alignItems="center" gap={2} mb={1}>
+const AnnotationToolbar = ({ labels, selectedLabel, onLabelChange, tool, onToolChange, onAutoLabel, aiLoading, hasImage }: Props) => (
+  <Box display="flex" alignItems="center" gap={2} mb={1} flexWrap="wrap">
+    {/* Tool selector */}
+    <ToggleButtonGroup
+      value={tool}
+      exclusive
+      size="small"
+      onChange={(_e, val) => { if (val) onToolChange(val as AnnotationType); }}
+    >
+      <Tooltip title="Bounding Box — kéo để vẽ hình chữ nhật">
+        <ToggleButton value="bbox" sx={{ gap: 0.5, px: 1.5 }}>
+          <RectangleOutlinedIcon fontSize="small" />
+          <Typography variant="caption" fontWeight={600}>Bbox</Typography>
+        </ToggleButton>
+      </Tooltip>
+      <Tooltip title="Polygon — click để thêm điểm, double-click để hoàn thành">
+        <ToggleButton value="polygon" sx={{ gap: 0.5, px: 1.5 }}>
+          <PolylineOutlinedIcon fontSize="small" />
+          <Typography variant="caption" fontWeight={600}>Polygon</Typography>
+        </ToggleButton>
+      </Tooltip>
+    </ToggleButtonGroup>
+
+    {/* Label selector */}
     <Typography variant="body2" color="text.secondary">
       Nhãn:
     </Typography>
@@ -39,9 +70,29 @@ const AnnotationToolbar = ({ labels, selectedLabel, onLabelChange }: Props) => (
         ))}
       </Select>
     </FormControl>
-    {selectedLabel && (
+
+    {/* AI auto-label button */}
+    <Tooltip title="Gọi AI để tự động gán nhãn ảnh hiện tại">
+      <span>
+        <Button
+          size="small"
+          variant="outlined"
+          color="secondary"
+          disabled={!hasImage || aiLoading}
+          onClick={onAutoLabel}
+          startIcon={aiLoading ? <CircularProgress size={14} color="inherit" /> : <AutoFixHighIcon fontSize="small" />}
+          sx={{ whiteSpace: 'nowrap' }}
+        >
+          {aiLoading ? 'Đang gán nhãn...' : 'Tự động gán nhãn'}
+        </Button>
+      </span>
+    </Tooltip>
+
+    {selectedLabel && !aiLoading && (
       <Typography variant="caption" color="text.secondary">
-        Nhấn giữ và kéo để vẽ vùng gán nhãn
+        {tool === 'bbox'
+          ? 'Kéo để vẽ bounding box'
+          : 'Click để thêm điểm · double-click để hoàn thành'}
       </Typography>
     )}
   </Box>

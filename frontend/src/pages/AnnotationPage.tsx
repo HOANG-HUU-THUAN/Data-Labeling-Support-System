@@ -29,7 +29,9 @@ import {
   unlockImage,
   replaceAnnotationsForImage,
 } from '../mock/annotationMock';
-import type { Annotation } from '../types/annotation';
+import type { Annotation, AnnotationType, Point } from '../types/annotation';
+import { autoLabel } from '../mock/aiMock';
+import type { AiSuggestion } from '../mock/aiMock';
 import AnnotationToolbar from '../components/AnnotationToolbar';
 import useAuthStore from '../store/authStore';
 import { submitTask } from '../mock/taskMock';
@@ -70,6 +72,14 @@ const AnnotationPage = () => {
   const [previewBox, setPreviewBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [task, setTask] = useState<import('../types/task').Task | null>(null);
   const [saving, setSaving] = useState(false);
+  // AI suggestions
+  const [suggestions, setSuggestions] = useState<(AiSuggestion & { tempId: number })[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  // Tool selection
+  const [tool, setTool] = useState<AnnotationType>('bbox');
+  // Polygon in-progress drawing
+  const [polyPoints, setPolyPoints] = useState<Point[]>([]);
+  const [polyCursor, setPolyCursor] = useState<Point | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -186,6 +196,13 @@ const AnnotationPage = () => {
   // All values accessed through refs → safe with empty deps array
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setPolyPoints([]);
+        setPolyCursor(null);
+        dragModeRef.current = null;
+        setPreviewBox(null);
+        return;
+      }
       if (!e.ctrlKey) return;
       const applyIdx = (newIdx: number) => {
         historyIndexRef.current = newIdx;
@@ -238,7 +255,7 @@ const AnnotationPage = () => {
       const h = Math.abs(pos.y - mode.startY);
       if (w <= 1 || h <= 1 || !selectedLabel || !selectedImage) return;
       setSaving(true);
-      createAnnotation({ imageId: selectedImage.id, labelId: selectedLabel.id, x, y, w, h }).then((ann) => {
+      createAnnotation({ imageId: selectedImage.id, labelId: selectedLabel.id, type: 'bbox', x, y, w, h }).then((ann) => {
         const next = [...currentAnnotationsRef.current, ann];
         setAnnotations(next);
         pushHistory(next);
@@ -275,13 +292,56 @@ const AnnotationPage = () => {
     }
   };
 
+  // Cancel polygon in progress (e.g. when switching image / tool)
+  const cancelPolygon = () => {
+    setPolyPoints([]);
+    setPolyCursor(null);
+  };
+
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isLocked || !selectedLabel || !selectedImage) return;
+    if (tool === 'polygon') return; // polygon uses click, not mousedown drag
     e.preventDefault();
     const pos = getRelativePos(e);
     dragModeRef.current = { type: 'draw', startX: pos.x, startY: pos.y };
     setPreviewBox({ x: pos.x, y: pos.y, w: 0, h: 0 });
     setSelectedBoxId(null);
+  };
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (tool !== 'polygon' || isLocked || !selectedLabel || !selectedImage) return;
+    if (e.detail === 2) return; // double-click handled separately
+    e.preventDefault();
+    const pos = getRelativePos(e);
+    setPolyPoints((prev) => [...prev, pos]);
+    setSelectedBoxId(null);
+  };
+
+  const handleCanvasDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (tool !== 'polygon' || isLocked || !selectedLabel || !selectedImage) return;
+    e.preventDefault();
+    const pts = polyPoints;
+    if (pts.length < 3) { cancelPolygon(); return; }
+    // Compute bounding box for bbox fallback fields
+    const xs = pts.map((p) => p.x);
+    const ys = pts.map((p) => p.y);
+    const x = Math.min(...xs), y = Math.min(...ys);
+    const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+    cancelPolygon();
+    setSaving(true);
+    createAnnotation({
+      imageId: selectedImage.id,
+      labelId: selectedLabel.id,
+      type: 'polygon',
+      points: pts,
+      x, y, w, h,
+    }).then((ann) => {
+      const next = [...currentAnnotationsRef.current, ann];
+      setAnnotations(next);
+      pushHistory(next);
+      setAnnotationCounts((prev) => ({ ...prev, [selectedImage.id]: (prev[selectedImage.id] ?? 0) + 1 }));
+      setSaving(false);
+    });
   };
 
   const handleBoxMouseDown = (e: React.MouseEvent, ann: Annotation) => {
@@ -302,6 +362,10 @@ const AnnotationPage = () => {
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (tool === 'polygon') {
+      if (polyPoints.length > 0) setPolyCursor(getRelativePos(e));
+      return;
+    }
     const mode = dragModeRef.current;
     if (!mode) return;
     const pos = getRelativePos(e);
@@ -341,6 +405,10 @@ const AnnotationPage = () => {
   const handleCanvasMouseUp = (e: React.MouseEvent<HTMLDivElement>) => finalizeDrag(e);
 
   const handleCanvasMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (tool === 'polygon') {
+      setPolyCursor(null);
+      return;
+    }
     if (dragModeRef.current?.type === 'draw') {
       dragModeRef.current = null;
       setPreviewBox(null);
@@ -356,6 +424,66 @@ const AnnotationPage = () => {
       setAnnotations(next);
       pushHistory(next);
       setAnnotationCounts((prev) => ({ ...prev, [selectedImage.id]: Math.max(0, (prev[selectedImage.id] ?? 1) - 1) }));
+    });
+  };
+
+  const handleAutoLabel = () => {
+    if (!selectedImage || labels.length === 0 || isLocked) return;
+    setAiLoading(true);
+    setSuggestions([]);
+    autoLabel(selectedImage.id, labels.map((l) => l.id))
+      .then((results) => {
+        let tid = -1;
+        setSuggestions(results.map((r) => ({ ...r, tempId: tid-- })));
+        setAiLoading(false);
+      })
+      .catch(() => setAiLoading(false));
+  };
+
+  const handleAcceptSuggestion = (sug: AiSuggestion & { tempId: number }) => {
+    if (!selectedImage || isLocked) return;
+    const { tempId, ...sugData } = sug;
+    setSaving(true);
+    createAnnotation({ ...sugData, imageId: selectedImage.id }).then((ann) => {
+      const next = [...currentAnnotationsRef.current, ann];
+      setAnnotations(next);
+      pushHistory(next);
+      setAnnotationCounts((prev) => ({ ...prev, [selectedImage.id]: (prev[selectedImage.id] ?? 0) + 1 }));
+      setSuggestions((prev) => prev.filter((s) => s.tempId !== tempId));
+      setSaving(false);
+    });
+  };
+
+  const handleIgnoreSuggestion = (tempId: number) => {
+    setSuggestions((prev) => prev.filter((s) => s.tempId !== tempId));
+  };
+
+  const handleAcceptAll = () => {
+    if (!selectedImage || isLocked || suggestions.length === 0) return;
+    setSaving(true);
+    Promise.all(
+      suggestions.map((sug) =>
+        createAnnotation({
+          imageId: selectedImage.id,
+          labelId: sug.labelId,
+          type: sug.type,
+          x: sug.x,
+          y: sug.y,
+          w: sug.w,
+          h: sug.h,
+          ...(sug.points ? { points: sug.points } : {}),
+        }),
+      ),
+    ).then((anns) => {
+      const next = [...currentAnnotationsRef.current, ...anns];
+      setAnnotations(next);
+      pushHistory(next);
+      setAnnotationCounts((prev) => ({
+        ...prev,
+        [selectedImage.id]: (prev[selectedImage.id] ?? 0) + anns.length,
+      }));
+      setSuggestions([]);
+      setSaving(false);
     });
   };
 
@@ -445,7 +573,31 @@ const AnnotationPage = () => {
           labels={labels}
           selectedLabel={selectedLabel}
           onLabelChange={setSelectedLabel}
+          tool={tool}
+          onToolChange={(t) => { setTool(t); cancelPolygon(); setPreviewBox(null); dragModeRef.current = null; }}
+          onAutoLabel={handleAutoLabel}
+          aiLoading={aiLoading}
+          hasImage={!!selectedImage && !isLocked}
         />
+      )}
+
+      {!loading && suggestions.length > 0 && (
+        <Alert
+          severity="info"
+          sx={{ mb: 1, py: 0.5 }}
+          action={
+            <Box display="flex" gap={1} alignItems="center">
+              <Button size="small" variant="contained" color="success" onClick={handleAcceptAll} disabled={saving} sx={{ whiteSpace: 'nowrap' }}>
+                Chấp nhận tất cả ({suggestions.length})
+              </Button>
+              <Button size="small" variant="outlined" color="error" onClick={() => setSuggestions([])} sx={{ whiteSpace: 'nowrap' }}>
+                Bỏ qua tất cả
+              </Button>
+            </Box>
+          }
+        >
+          AI đề xuất {suggestions.length} nhãn. Xét từng nhãn bên dưới hoặc chấp nhận/bỏ qua tất cả.
+        </Alert>
       )}
 
       {task?.status === 'REJECTED' && (
@@ -512,7 +664,7 @@ const AnnotationPage = () => {
             {images.map((img) => (
               <Box
                 key={img.id}
-                onClick={() => { setAnnotations([]); setSelectedImage(img); }}
+                onClick={() => { setAnnotations([]); setSelectedImage(img); cancelPolygon(); setSuggestions([]); }}
                 sx={{ position: 'relative', cursor: 'pointer' }}
               >
                 <Box
@@ -593,6 +745,8 @@ const AnnotationPage = () => {
                   onMouseMove={handleCanvasMouseMove}
                   onMouseUp={handleCanvasMouseUp}
                   onMouseLeave={handleCanvasMouseLeave}
+                  onClick={handleCanvasClick}
+                  onDoubleClick={handleCanvasDoubleClick}
                 >
                   {/* Base image */}
                   <Box
@@ -608,8 +762,140 @@ const AnnotationPage = () => {
                     }}
                   />
 
-                  {/* Saved annotations */}
-                  {currentAnnotations.map((ann) => {
+                  {/* SVG overlay — polygons + in-progress drawing */}
+                  <svg
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      pointerEvents: 'none',
+                      overflow: 'visible',
+                    }}
+                  >
+                    {/* Saved polygon annotations */}
+                    {currentAnnotations
+                      .filter((ann) => ann.type === 'polygon' && ann.points && ann.points.length >= 2)
+                      .map((ann) => {
+                        const color = getColor(ann.labelId);
+                        const isSelected = selectedBoxId === ann.id;
+                        const pts = ann.points!;
+                        const pointsStr = pts.map((p) => `${p.x}%,${p.y}%`).join(' ');
+                        const labelName = labels.find((l) => l.id === ann.labelId)?.name ?? '';
+                        return (
+                          <g key={ann.id}>
+                            <polygon
+                              points={pointsStr}
+                              fill={color + '33'}
+                              stroke={color}
+                              strokeWidth={isSelected ? 3 : 2}
+                              strokeDasharray={isSelected ? undefined : undefined}
+                              style={{ cursor: isLocked ? 'default' : 'pointer', pointerEvents: 'all' }}
+                              onClick={(e) => { e.stopPropagation(); setSelectedBoxId(ann.id); }}
+                              onContextMenu={(e) => { e.preventDefault(); if (!isLocked) handleDeleteAnnotation(ann.id); }}
+                            />
+                            {/* Vertex dots */}
+                            {pts.map((p, i) => (
+                              <circle key={i} cx={`${p.x}%`} cy={`${p.y}%`} r={isSelected ? 5 : 3} fill={color} stroke="#fff" strokeWidth={1.5} style={{ pointerEvents: 'none' }} />
+                            ))}
+                            {/* Label badge at first point */}
+                            <text
+                              x={`${pts[0].x}%`}
+                              y={`${pts[0].y}%`}
+                              dy="-6"
+                              fontSize={11}
+                              fill="#fff"
+                              style={{ pointerEvents: 'none' }}
+                            >
+                              <tspan
+                                style={{
+                                  fill: color,
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  background: color,
+                                }}
+                              >
+                                {labelName}
+                              </tspan>
+                            </text>
+                            {/* Delete button when selected */}
+                            {isSelected && !isLocked && (
+                              <g
+                                style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                                onClick={(e) => { e.stopPropagation(); handleDeleteAnnotation(ann.id); }}
+                              >
+                                <circle cx={`${pts[0].x}%`} cy={`${pts[0].y}%`} r={9} fill="#d32f2f" />
+                                <text x={`${pts[0].x}%`} y={`${pts[0].y}%`} textAnchor="middle" dy="4" fontSize={12} fill="#fff" style={{ pointerEvents: 'none' }}>×</text>
+                              </g>
+                            )}
+                          </g>
+                        );
+                      })}
+
+                    {/* In-progress polygon */}
+                    {polyPoints.length > 0 && selectedLabel && (() => {
+                      const color = selectedLabel.color;
+                      const allPts = polyCursor ? [...polyPoints, polyCursor] : polyPoints;
+                      const lineStr = allPts.map((p) => `${p.x}%,${p.y}%`).join(' ');
+                      return (
+                        <g>
+                          <polyline
+                            points={lineStr}
+                            fill="none"
+                            stroke={color}
+                            strokeWidth={2}
+                            strokeDasharray="6 3"
+                          />
+                          {/* Closing preview line */}
+                          {polyCursor && (
+                            <line
+                              x1={`${polyCursor.x}%`}
+                              y1={`${polyCursor.y}%`}
+                              x2={`${polyPoints[0].x}%`}
+                              y2={`${polyPoints[0].y}%`}
+                              stroke={color}
+                              strokeWidth={1.5}
+                              strokeDasharray="4 4"
+                              opacity={0.5}
+                            />
+                          )}
+                          {/* Vertex dots */}
+                          {polyPoints.map((p, i) => (
+                            <circle key={i} cx={`${p.x}%`} cy={`${p.y}%`} r={4} fill={color} stroke="#fff" strokeWidth={1.5} />
+                          ))}
+                        </g>
+                      );
+                    })()}
+
+                    {/* AI polygon suggestions */}
+                    {suggestions
+                      .filter((sug) => sug.type === 'polygon' && sug.points && sug.points.length >= 2)
+                      .map((sug) => {
+                        const color = getColor(sug.labelId);
+                        const pts = sug.points!;
+                        const pointsStr = pts.map((p) => `${p.x}%,${p.y}%`).join(' ');
+                        return (
+                          <g key={sug.tempId}>
+                            <polygon
+                              points={pointsStr}
+                              fill={color + '22'}
+                              stroke={color}
+                              strokeWidth={2}
+                              strokeDasharray="8 4"
+                              opacity={0.85}
+                              style={{ pointerEvents: 'none' }}
+                            />
+                            {pts.map((p, i) => (
+                              <circle key={i} cx={`${p.x}%`} cy={`${p.y}%`} r={3} fill={color} stroke="#fff" strokeWidth={1} opacity={0.7} style={{ pointerEvents: 'none' }} />
+                            ))}
+                          </g>
+                        );
+                      })
+                    }
+                  </svg>
+
+                  {/* Saved bbox annotations */}
+                  {currentAnnotations.filter((ann) => !ann.type || ann.type === 'bbox').map((ann) => {
                     const color = getColor(ann.labelId);
                     const isSelected = selectedBoxId === ann.id;
                     return (
@@ -653,7 +939,6 @@ const AnnotationPage = () => {
                         >
                           {labels.find((l) => l.id === ann.labelId)?.name ?? ''}
                         </Typography>
-                        {/* Delete button — shown only on selected box */}
                         {isSelected && !isLocked && (
                           <Box
                             onMouseDown={(e) => { e.stopPropagation(); handleDeleteAnnotation(ann.id); }}
@@ -677,7 +962,6 @@ const AnnotationPage = () => {
                             <DeleteForeverIcon sx={{ fontSize: 13 }} />
                           </Box>
                         )}
-                        {/* Corner resize handles — shown only on selected box */}
                         {isSelected && !isLocked && CORNER_HANDLES.map(({ key, cursor, sx }) => (
                           <Box
                             key={key}
@@ -694,6 +978,63 @@ const AnnotationPage = () => {
                             }}
                           />
                         ))}
+                      </Box>
+                    );
+                  })}
+
+                  {/* AI suggestion overlays — bbox frames + accept/ignore buttons for all types */}
+                  {suggestions.map((sug) => {
+                    const color = getColor(sug.labelId);
+                    const labelName = labels.find((l) => l.id === sug.labelId)?.name ?? '';
+                    return (
+                      <Box
+                        key={sug.tempId}
+                        sx={{
+                          position: 'absolute',
+                          left: `${sug.x}%`,
+                          top: `${sug.y}%`,
+                          width: `${sug.w}%`,
+                          height: `${sug.h}%`,
+                          boxSizing: 'border-box',
+                          pointerEvents: 'none',
+                          ...(sug.type === 'bbox' && {
+                            border: `2px dashed ${color}`,
+                            bgcolor: `${color}15`,
+                          }),
+                        }}
+                      >
+                        {/* Badge + Accept / Ignore buttons */}
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: -22,
+                            left: -2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.3,
+                            pointerEvents: 'auto',
+                            whiteSpace: 'nowrap',
+                            zIndex: 10,
+                          }}
+                        >
+                          <Box sx={{ bgcolor: color, color: '#fff', fontSize: 10, px: 0.6, lineHeight: '18px', fontWeight: 700, borderRadius: '2px 0 0 0' }}>
+                            AI · {labelName}
+                          </Box>
+                          <Box
+                            onClick={(e) => { e.stopPropagation(); handleAcceptSuggestion(sug); }}
+                            title="Chấp nhận"
+                            sx={{ cursor: 'pointer', bgcolor: '#2e7d32', color: '#fff', fontSize: 13, px: 0.7, lineHeight: '18px', '&:hover': { bgcolor: '#1b5e20' } }}
+                          >
+                            ✓
+                          </Box>
+                          <Box
+                            onClick={(e) => { e.stopPropagation(); handleIgnoreSuggestion(sug.tempId); }}
+                            title="Bỏ qua"
+                            sx={{ cursor: 'pointer', bgcolor: '#d32f2f', color: '#fff', fontSize: 13, px: 0.7, lineHeight: '18px', borderRadius: '0 2px 0 0', '&:hover': { bgcolor: '#b71c1c' } }}
+                          >
+                            ✕
+                          </Box>
+                        </Box>
                       </Box>
                     );
                   })}
