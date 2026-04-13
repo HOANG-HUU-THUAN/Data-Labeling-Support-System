@@ -1,6 +1,6 @@
 package com.labelingsystem.backend.modules.review.service.impl;
 
-import com.labelingsystem.backend.common.enums.TaskStatus;
+
 import com.labelingsystem.backend.modules.review.dto.request.ReviewRequest;
 import com.labelingsystem.backend.modules.review.service.ReviewService;
 import com.labelingsystem.backend.modules.task.entity.Task;
@@ -35,14 +35,14 @@ public class ReviewServiceImpl implements ReviewService {
 
         // 4. Xử lý logic Phê duyệt & KHÓA (Approve & LOCK)
         if (request.isApproved()) {
-            task.setStatus(TaskStatus.APPROVED);
+            task.setStatus("APPROVED");
             task.setLocked(true); // ĐÓNG CỬA KHÓA LẠI! / ENGAGE THE LOCK!
             
             // TODO (Sau này): Lưu feedback vào bảng Audit/Review Log nếu cần
         } 
         // 5. Xử lý logic Từ chối & MỞ KHÓA (Reject & UNLOCK)
         else {
-            task.setStatus(TaskStatus.REJECTED);
+            task.setStatus("REJECTED");
             task.setLocked(false); // Mở khóa cho Annotator làm lại / Unlock for Annotator
             
             // Kiểm tra bắt buộc phải có feedback nếu Reject
