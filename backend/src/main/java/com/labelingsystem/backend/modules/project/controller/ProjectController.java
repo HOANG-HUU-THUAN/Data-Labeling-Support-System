@@ -66,6 +66,22 @@ public class ProjectController {
                 .build();
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('MANAGER') or hasAuthority('ANNOTATOR') or hasAuthority('REVIEWER')")
+    public ApiResponse<ProjectResponse> getProjectById(
+            @PathVariable("id") Long projectId,
+            Authentication authentication) {
+        
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        Long userId = userDetails.getId();
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().contains("ADMIN"));
+
+        return ApiResponse.<ProjectResponse>builder()
+                .data(projectService.getProjectById(projectId, userId, isAdmin))
+                .build();
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('MANAGER')")
     public ApiResponse<String> deleteProject(

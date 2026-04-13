@@ -3,9 +3,13 @@ package com.labelingsystem.backend.modules.project.entity;
 import com.labelingsystem.backend.modules.user.entity.User;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import com.labelingsystem.backend.common.enums.ProjectStatus;
 
 @Entity
 @Table(name = "projects")
@@ -29,6 +33,9 @@ public class Project {
     @Column(name = "type", length = 100, nullable = false)
     private String type;
 
+    @Column(name = "guideline", columnDefinition = "TEXT")
+    private String guideline;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
@@ -37,12 +44,13 @@ public class Project {
     @Builder.Default
     private boolean deleted = false;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50)
-    private String status;
+    private ProjectStatus status;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private java.util.List<Label> labels = new java.util.ArrayList<>();
+    private List<Label> labels = new ArrayList<>();
 
     @Column(name = "created_at", updatable = false)
     @CreationTimestamp

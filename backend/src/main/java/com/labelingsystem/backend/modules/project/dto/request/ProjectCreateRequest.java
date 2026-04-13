@@ -18,6 +18,8 @@ public class ProjectCreateRequest {
     @NotBlank(message = "Loại dự án không được để trống")
     private String type;
 
+    private String guideline;
+
     @Valid
     private List<LabelRequest> labels;
 

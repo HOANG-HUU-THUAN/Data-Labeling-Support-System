@@ -14,4 +14,6 @@ public interface ProjectService {
     ProjectResponse updateProject(Long projectId, ProjectUpdateRequest request, Long userId, boolean isAdmin);
 
     void deleteProject(Long projectId, Long userId, boolean isAdmin);
+
+    ProjectResponse getProjectById(Long projectId, Long userId, boolean isAdmin);
 }

@@ -11,6 +11,7 @@ public class ProjectResponse {
     private String description;
     private String type;
     private String status;
+    private String guideline;
     private LocalDateTime createdAt;
     private List<LabelResponse> labels;
     @Data

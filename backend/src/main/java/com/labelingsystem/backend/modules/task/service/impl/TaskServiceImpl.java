@@ -1,8 +1,8 @@
 package com.labelingsystem.backend.modules.task.service.impl;
 
-import com.labelingsystem.backend.common.exception.ResourceNotFoundException;
-import com.labelingsystem.backend.common.exception.CustomAppException;
 import com.labelingsystem.backend.common.enums.ErrorCode;
+import com.labelingsystem.backend.common.exception.CustomAppException;
+import com.labelingsystem.backend.common.exception.ResourceNotFoundException;
 import com.labelingsystem.backend.modules.dataset.entity.Dataset;
 import com.labelingsystem.backend.modules.dataset.entity.Image;
 import com.labelingsystem.backend.modules.dataset.repository.DatasetRepository;
@@ -10,22 +10,24 @@ import com.labelingsystem.backend.modules.dataset.repository.ImageRepository;
 import com.labelingsystem.backend.modules.project.entity.Project;
 import com.labelingsystem.backend.modules.project.repository.ProjectRepository;
 import com.labelingsystem.backend.modules.task.dto.request.TaskBatchCreateRequest;
+import com.labelingsystem.backend.modules.task.dto.response.MyTaskResponse;
+import com.labelingsystem.backend.modules.task.dto.response.TaskImageResponse;
 import com.labelingsystem.backend.modules.task.entity.Task;
 import com.labelingsystem.backend.modules.task.repository.TaskRepository;
 import com.labelingsystem.backend.modules.task.service.TaskService;
 import com.labelingsystem.backend.modules.user.entity.User;
 import com.labelingsystem.backend.modules.user.repository.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.Comparator;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -87,7 +89,7 @@ public class TaskServiceImpl implements TaskService {
                     .project(project)
                     .assignedAnnotator(assignedAnnotator)
                     .assignedReviewer(assignedReviewer)
-                    .status("ASSIGNED")
+                    .status("PENDING")
                     .deleted(false)
                     .images(new HashSet<>(batchImages))
                     .build();
@@ -97,5 +99,76 @@ public class TaskServiceImpl implements TaskService {
         }
 
         return "Successfully created " + taskCount + " tasks and assigned images.";
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MyTaskResponse> getMyTasks(Long annotatorId) {
+        List<String> allowedStatuses = List.of("PENDING", "IN_PROGRESS", "REJECTED");
+
+        return taskRepository
+                .findByAssignedAnnotatorIdAndDeletedFalseAndStatusInOrderByCreatedAtDesc(annotatorId, allowedStatuses)
+                .stream()
+                .map(task -> MyTaskResponse.builder()
+                        .taskId(task.getId())
+                        .projectId(task.getProject().getId())
+                        .projectName(task.getProject().getName())
+                        .status(task.getStatus())
+                        .assignedAnnotatorId(task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getId() : null)
+                        .assignedReviewerId(task.getAssignedReviewer() != null ? task.getAssignedReviewer().getId() : null)
+                        .imageCount(task.getImages().size())
+                        .createdAt(task.getCreatedAt())
+                        .build())
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TaskImageResponse> getTaskImages(
+            Long taskId,
+            Long userId,
+            boolean isAdmin,
+            boolean isReviewer,
+            HttpServletRequest request) {
+        Task task = taskRepository.findByIdAndDeletedFalse(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + taskId));
+
+        boolean canAccess = isAdmin;
+        if (!canAccess && task.getAssignedAnnotator() != null && task.getAssignedAnnotator().getId().equals(userId)) {
+            canAccess = true;
+        }
+        if (!canAccess && isReviewer && task.getAssignedReviewer() != null && task.getAssignedReviewer().getId().equals(userId)) {
+            canAccess = true;
+        }
+
+        if (!canAccess) {
+            throw new CustomAppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        return task.getImages().stream()
+                .filter(image -> !image.isDeleted())
+                .sorted(Comparator.comparing(Image::getId))
+                .map(image -> mapTaskImageResponse(image, request))
+                .toList();
+    }
+
+    private TaskImageResponse mapTaskImageResponse(Image image, HttpServletRequest request) {
+        return TaskImageResponse.builder()
+                .imageId(image.getId())
+                .datasetId(image.getDataset() != null ? image.getDataset().getId() : null)
+                .filePath(image.getFilePath())
+                .thumbnailUrl(buildImageUrl(request, "/api/v1/images/thumbnail/" + image.getFilePath()))
+                .originalUrl(buildImageUrl(request, "/api/v1/images/serve/" + image.getFilePath()))
+                .status(image.getStatus())
+                .createdAt(image.getCreatedAt())
+                .build();
+    }
+
+    private String buildImageUrl(HttpServletRequest request, String path) {
+        return ServletUriComponentsBuilder.fromRequestUri(request)
+                .replacePath(path)
+                .replaceQuery(null)
+                .build()
+                .toUriString();
     }
 }
