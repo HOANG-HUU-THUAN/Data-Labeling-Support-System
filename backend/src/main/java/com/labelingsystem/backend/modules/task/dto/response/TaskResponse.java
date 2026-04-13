@@ -3,8 +3,6 @@ package com.labelingsystem.backend.modules.task.dto.response;
 import lombok.Data;
 import java.time.LocalDateTime;
 
-import com.labelingsystem.backend.common.enums.TaskStatus;
-
 @Data
 public class TaskResponse {
     private Long id;
@@ -19,8 +17,10 @@ public class TaskResponse {
     
     private Long reviewerId;
     private String reviewerUsername;
+
+    private int imageCount;
     
     // Trạng thái & Ngày tạo / Status & Created Date
-    private TaskStatus status;
+    private String status;
     private LocalDateTime createdAt;
 }
