@@ -10,8 +10,8 @@ import com.labelingsystem.backend.modules.dataset.repository.ImageRepository;
 import com.labelingsystem.backend.modules.project.entity.Project;
 import com.labelingsystem.backend.modules.project.repository.ProjectRepository;
 import com.labelingsystem.backend.modules.task.dto.request.TaskBatchCreateRequest;
-import com.labelingsystem.backend.modules.task.dto.response.MyTaskResponse;
 import com.labelingsystem.backend.modules.task.dto.response.TaskImageResponse;
+import com.labelingsystem.backend.modules.task.dto.response.TaskResponse;
 import com.labelingsystem.backend.modules.task.entity.Task;
 import com.labelingsystem.backend.modules.task.repository.TaskRepository;
 import com.labelingsystem.backend.modules.task.service.TaskService;
@@ -22,6 +22,8 @@ import java.util.Comparator;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -33,7 +35,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class TaskServiceImpl implements TaskService {
-
+    
     TaskRepository taskRepository;
     ImageRepository imageRepository;
     DatasetRepository datasetRepository;
@@ -101,26 +103,9 @@ public class TaskServiceImpl implements TaskService {
         return "Successfully created " + taskCount + " tasks and assigned images.";
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<MyTaskResponse> getMyTasks(Long annotatorId) {
-        List<String> allowedStatuses = List.of("PENDING", "IN_PROGRESS", "REJECTED");
 
-        return taskRepository
-                .findByAssignedAnnotatorIdAndDeletedFalseAndStatusInOrderByCreatedAtDesc(annotatorId, allowedStatuses)
-                .stream()
-                .map(task -> MyTaskResponse.builder()
-                        .taskId(task.getId())
-                        .projectId(task.getProject().getId())
-                        .projectName(task.getProject().getName())
-                        .status(task.getStatus())
-                        .assignedAnnotatorId(task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getId() : null)
-                        .assignedReviewerId(task.getAssignedReviewer() != null ? task.getAssignedReviewer().getId() : null)
-                        .imageCount(task.getImages().size())
-                        .createdAt(task.getCreatedAt())
-                        .build())
-                .toList();
-    }
+    
+    
 
     @Override
     @Transactional(readOnly = true)
@@ -170,5 +155,76 @@ public class TaskServiceImpl implements TaskService {
                 .replaceQuery(null)
                 .build()
                 .toUriString();
+    }
+
+    private TaskResponse mapToResponse(Task task) {
+        TaskResponse response = new TaskResponse();
+        response.setId(task.getId());
+        if (task.getProject() != null) {
+            response.setProjectId(task.getProject().getId());
+            response.setProjectName(task.getProject().getName());
+        }
+        if (task.getAssignedAnnotator() != null) {
+            response.setAnnotatorId(task.getAssignedAnnotator().getId());
+            response.setAnnotatorUsername(task.getAssignedAnnotator().getUsername());
+        }
+        if (task.getAssignedReviewer() != null) {
+            response.setReviewerId(task.getAssignedReviewer().getId());
+            response.setReviewerUsername(task.getAssignedReviewer().getUsername());
+        }
+        if (task.getImages() != null) {
+            response.setImageCount(task.getImages().size());
+        } else {
+            response.setImageCount(0);
+        }
+        response.setStatus(task.getStatus());
+        response.setCreatedAt(task.getCreatedAt());
+        return response;
+    }
+    
+    public List<TaskResponse> getAllTasksBasedOnRole(Long userId, List<String> userRoles) {
+        List<Task> tasks;
+
+        // Role-based Branching Logic
+        if (userRoles.contains("ADMIN")) {
+            tasks = taskRepository.findAll();
+            
+        } else if (userRoles.contains("MANAGER")) {
+            tasks = taskRepository.findByProject_CreatedBy_Id(userId);
+            
+        } else {
+            tasks = taskRepository.findByAssignedAnnotator_IdOrAssignedReviewer_Id(userId, userId);
+        }
+
+        return tasks.stream()
+        .map(this::mapToResponse)
+        .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TaskResponse getTaskById(Long taskId, Long userId, List<String> userRoles) {
+        Task task = taskRepository.findById(taskId)
+                .filter(t -> !t.isDeleted()) 
+                .orElseThrow(() -> new RuntimeException("Lỗi: Không tìm thấy Task hoặc Task đã bị xóa!"));
+
+        boolean isAdmin = userRoles.contains("ADMIN") || userRoles.contains("ROLE_ADMIN");
+        boolean isManager = userRoles.contains("MANAGER") || userRoles.contains("ROLE_MANAGER");
+
+        // RBAC Check
+        if (!isAdmin) {
+            if (isManager) {
+                if (!task.getProject().getCreatedBy().getId().equals(userId)) {
+                    throw new RuntimeException("Lỗi 403: Bạn không có quyền xem Task của dự án khác!");
+                }
+            } else {
+                boolean isMyTask = (task.getAssignedAnnotator() != null && task.getAssignedAnnotator().getId().equals(userId)) ||
+                                   (task.getAssignedReviewer() != null && task.getAssignedReviewer().getId().equals(userId));
+                if (!isMyTask) {
+                    throw new RuntimeException("Lỗi 403: Bạn không có quyền xem Task này vì bạn không được phân công!");
+                }
+            }
+        }
+        return mapToResponse(task);
     }
 }
