@@ -5,8 +5,6 @@ import lombok.Data;
 
 @Data
 public class ReviewRequest {
-    @JsonProperty("isApproved")
-    private boolean isApproved;
-    private String feedback;
+    private String comment;
 } 
                             
