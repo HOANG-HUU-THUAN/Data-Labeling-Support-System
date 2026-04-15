@@ -1,5 +1,6 @@
 package com.labelingsystem.backend.modules.annotation.entity;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.labelingsystem.backend.modules.dataset.entity.Image;
 import com.labelingsystem.backend.modules.project.entity.Label;
 import com.labelingsystem.backend.modules.task.entity.Task;
@@ -8,6 +9,8 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "annotations")
@@ -38,7 +41,8 @@ public class Annotation {
     private String type;
 
     @Column(name = "coordinates", columnDefinition = "jsonb", nullable = false)
-    private String coordinates;
+    @JdbcTypeCode(SqlTypes.JSON)
+    private JsonNode coordinates;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)

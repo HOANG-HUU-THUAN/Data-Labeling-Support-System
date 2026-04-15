@@ -3,12 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
   Button,
-  Checkbox,
   CircularProgress,
   Divider,
   FormControl,
-  FormControlLabel,
-  FormGroup,
   FormHelperText,
   InputLabel,
   MenuItem,
@@ -17,16 +14,19 @@ import {
   Stack,
   TextField,
   Typography,
+  Chip,
+  OutlinedInput,
 } from '@mui/material';
 import { getProjects } from '../api/projectApi';
 import { getDatasetsByProject } from '../api/datasetApi';
-import { createTask, getTaskById, updateTask } from '../api/taskApi';
+import { createBatchTasks, getTaskById, updateTask } from '../api/taskApi';
 import type { Project } from '../types/project';
 import type { Dataset } from '../types/dataset';
 
 // Annotators from mock (static list derived from authMock)
 const ANNOTATORS = [
-  { id: 3, name: 'Annotator' },
+  { id: 3, name: 'Annotator 1' },
+  { id: 4, name: 'Annotator 2' },
 ];
 
 const TaskFormPage = () => {
@@ -35,10 +35,15 @@ const TaskFormPage = () => {
   const isEdit = Boolean(id);
 
   const [loading, setLoading] = useState(isEdit);
-  const [name, setName] = useState('');
+  
+  // States
   const [projectId, setProjectId] = useState<number | ''>('');
-  const [datasetIds, setDatasetIds] = useState<number[]>([]);
-  const [assigneeId, setAssigneeId] = useState<number | ''>('');
+  const [datasetId, setDatasetId] = useState<number | ''>('');
+  const [imagesPerTask, setImagesPerTask] = useState<number>(10);
+  const [annotatorIds, setAnnotatorIds] = useState<number[]>([]);
+  
+  // Edit mode only states
+  const [name, setName] = useState('');
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
@@ -46,27 +51,28 @@ const TaskFormPage = () => {
   const [submitting, setSubmitting] = useState(false);
 
   // Validation errors
-  const [errors, setErrors] = useState({ name: false, projectId: false, datasetIds: false });
+  const [errors, setErrors] = useState<any>({});
 
   // Load projects once
   useEffect(() => {
     getProjects().then(setProjects);
   }, []);
 
-  // In edit mode: load existing task data and its datasets
   useEffect(() => {
-    if (!isEdit || !id) return;
+    if (!isEdit || !id || isNaN(Number(id))) return;
     let cancelled = false;
     getTaskById(Number(id)).then((task) => {
       if (cancelled || !task) return;
       setName(task.name);
       setProjectId(task.projectId);
-      setAssigneeId(task.assigneeId ?? '');
+      setAnnotatorIds(task.assigneeId ? [task.assigneeId] : []);
       // Load datasets for the project, then restore checked ids
       getDatasetsByProject(task.projectId).then((all) => {
         if (cancelled) return;
         setDatasets(all);
-        setDatasetIds(task.datasetIds);
+        if (task.datasetIds && task.datasetIds.length > 0) {
+          setDatasetId(task.datasetIds[0]);
+        }
         setLoading(false);
       });
     });
@@ -78,30 +84,34 @@ const TaskFormPage = () => {
     if (isEdit) return; // edit mode uses the effect above
     if (projectId === '') {
       setDatasets([]);
-      setDatasetIds([]);
+      setDatasetId('');
       return;
     }
     setLoadingDatasets(true);
-    setDatasetIds([]);
+    setDatasetId('');
     getDatasetsByProject(projectId)
       .then(setDatasets)
       .finally(() => setLoadingDatasets(false));
   }, [projectId, isEdit]);
 
-  const toggleDataset = (id: number) => {
-    setDatasetIds((prev) =>
-      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
-    );
-  };
-
   const validate = () => {
-    const e = {
-      name: name.trim() === '',
-      projectId: projectId === '',
-      datasetIds: datasetIds.length === 0,
-    };
-    setErrors(e);
-    return !e.name && !e.projectId && !e.datasetIds;
+    if (isEdit) {
+      const e = {
+        name: name.trim() === '',
+        projectId: projectId === '',
+      };
+      setErrors(e);
+      return !e.name && !e.projectId;
+    } else {
+      const e = {
+        projectId: projectId === '',
+        datasetId: datasetId === '',
+        imagesPerTask: imagesPerTask < 1,
+        annotatorIds: annotatorIds.length === 0,
+      };
+      setErrors(e);
+      return !e.projectId && !e.datasetId && !e.imagesPerTask && !e.annotatorIds;
+    }
   };
 
   const handleSubmit = async () => {
@@ -111,15 +121,14 @@ const TaskFormPage = () => {
       if (isEdit) {
         await updateTask(Number(id), {
           name: name.trim(),
-          datasetIds,
-          assigneeId: assigneeId === '' ? undefined : (assigneeId as number),
+          datasetIds: datasetId !== '' ? [datasetId as number] : [],
+          assigneeId: annotatorIds.length > 0 ? annotatorIds[0] : undefined,
         });
       } else {
-        await createTask({
-          name: name.trim(),
-          projectId: projectId as number,
-          datasetIds,
-          assigneeId: assigneeId === '' ? undefined : (assigneeId as number),
+        await createBatchTasks(projectId as number, {
+          datasetId: datasetId as number,
+          imagesPerTask,
+          annotatorIds,
         });
       }
       navigate('/tasks');
@@ -139,24 +148,26 @@ const TaskFormPage = () => {
   return (
     <Box maxWidth={600}>
       <Typography variant="h5" fontWeight="bold" mb={3}>
-        {isEdit ? 'Chỉnh sửa task' : 'Tạo task'}
+        {isEdit ? 'Chỉnh sửa task' : 'Tạo task hàng loạt'}
       </Typography>
 
       <Paper variant="outlined" sx={{ p: 3 }}>
         <Stack spacing={3}>
-          {/* NAME */}
-          <TextField
-            label="Tên task"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            error={errors.name}
-            helperText={errors.name ? 'Vui lòng nhập tên task' : ''}
-            fullWidth
-            size="small"
-          />
+          {/* NAME - Edit Mode Only */}
+          {isEdit && (
+            <TextField
+              label="Tên task"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              error={!!errors.name}
+              helperText={errors.name ? 'Vui lòng nhập tên task' : ''}
+              fullWidth
+              size="small"
+            />
+          )}
 
           {/* PROJECT — disabled in edit mode */}
-          <FormControl fullWidth size="small" error={errors.projectId} disabled={isEdit}>
+          <FormControl fullWidth size="small" error={!!errors.projectId} disabled={isEdit}>
             <InputLabel>Project</InputLabel>
             <Select
               value={projectId}
@@ -172,60 +183,83 @@ const TaskFormPage = () => {
             {errors.projectId && <FormHelperText>Vui lòng chọn project</FormHelperText>}
           </FormControl>
 
-          {/* DATASET MULTI-SELECT */}
-          <Box>
-            <Typography variant="body2" fontWeight={500} mb={0.5}>
-              Dataset
-            </Typography>
-            {loadingDatasets ? (
-              <CircularProgress size={20} />
-            ) : projectId === '' ? (
-              <Typography variant="body2" color="text.secondary">
-                Chọn project để xem dataset
-              </Typography>
-            ) : datasets.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                Không có dataset nào trong project này
-              </Typography>
-            ) : (
-              <FormGroup>
-                {datasets.map((ds) => (
-                  <FormControlLabel
-                    key={ds.id}
-                    control={
-                      <Checkbox
-                        size="small"
-                        checked={datasetIds.includes(ds.id)}
-                        onChange={() => toggleDataset(ds.id)}
-                      />
-                    }
-                    label={`#${ds.id} — ${ds.name}`}
-                  />
-                ))}
-              </FormGroup>
+          {/* DATASET SINGLE-SELECT */}
+          <FormControl fullWidth size="small" error={!!errors.datasetId}>
+            <InputLabel>Dataset</InputLabel>
+            <Select
+              value={datasetId}
+              label="Dataset"
+              onChange={(e) => setDatasetId(e.target.value as number)}
+              disabled={loadingDatasets || projectId === ''}
+            >
+              {datasets.map((ds) => (
+                <MenuItem key={ds.id} value={ds.id}>
+                  #{ds.id} — {ds.name}
+                </MenuItem>
+              ))}
+            </Select>
+            {errors.datasetId && <FormHelperText>Vui lòng chọn 1 dataset</FormHelperText>}
+            {projectId !== '' && datasets.length === 0 && !loadingDatasets && (
+               <FormHelperText>Không có dataset nào trong project này</FormHelperText>
             )}
-            {errors.datasetIds && (
-              <FormHelperText error>Vui lòng chọn ít nhất 1 dataset</FormHelperText>
-            )}
-          </Box>
+          </FormControl>
+
+          {/* IMAGES PER TASK - Create Mode Only */}
+          {!isEdit && (
+            <TextField
+              label="Số ảnh mỗi task (Images / Task)"
+              type="number"
+              value={imagesPerTask}
+              onChange={(e) => setImagesPerTask(Number(e.target.value))}
+              error={!!errors.imagesPerTask}
+              helperText={errors.imagesPerTask ? 'Số ảnh mỗi task phải lớn hơn 0' : ''}
+              fullWidth
+              size="small"
+              InputProps={{ inputProps: { min: 1 } }}
+            />
+          )}
 
           <Divider />
 
-          {/* ASSIGNEE */}
-          <FormControl fullWidth size="small">
-            <InputLabel>Người được gán (tuỳ chọn)</InputLabel>
+          {/* ASSIGNEES (Multiple for create, Single mapped to multiple array for Edit) */}
+          <FormControl fullWidth size="small" error={!!errors.annotatorIds}>
+            <InputLabel>Annotators (Người gán nhãn)</InputLabel>
             <Select
-              value={assigneeId}
-              label="Người được gán (tuỳ chọn)"
-              onChange={(e) => setAssigneeId(e.target.value as number | '')}
+              multiple={!isEdit}
+              value={isEdit ? (annotatorIds.length > 0 ? annotatorIds[0] : '') : annotatorIds}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (isEdit) {
+                  setAnnotatorIds(val === '' ? [] : [val as number]);
+                } else {
+                  setAnnotatorIds(typeof val === 'string' ? val.split(',').map(Number) : val as number[]);
+                }
+              }}
+              input={<OutlinedInput label="Annotators (Người gán nhãn)" />}
+              renderValue={(selected) => {
+                if (isEdit) {
+                  const s = selected as number;
+                  return ANNOTATORS.find((a) => a.id === s)?.name || s;
+                }
+                const selArr = selected as number[];
+                return (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selArr.map((value) => {
+                      const annotator = ANNOTATORS.find((a) => a.id === value);
+                      return <Chip key={value} label={annotator?.name || value} size="small" />;
+                    })}
+                  </Box>
+                );
+              }}
             >
-              <MenuItem value="">— Không gán —</MenuItem>
+               {isEdit && <MenuItem value="">— Không gán —</MenuItem>}
               {ANNOTATORS.map((u) => (
                 <MenuItem key={u.id} value={u.id}>
                   {u.name}
                 </MenuItem>
               ))}
             </Select>
+            {errors.annotatorIds && <FormHelperText>Vui lòng chọn ít nhất 1 annotator</FormHelperText>}
           </FormControl>
 
           {/* ACTIONS */}
@@ -234,7 +268,7 @@ const TaskFormPage = () => {
               Hủy
             </Button>
             <Button variant="contained" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? <CircularProgress size={22} color="inherit" /> : isEdit ? 'Cập nhật' : 'Tạo'}
+              {submitting ? <CircularProgress size={22} color="inherit" /> : isEdit ? 'Cập nhật' : 'Tạo hàng loạt'}
             </Button>
           </Stack>
         </Stack>

@@ -26,17 +26,17 @@ import type { Task, TaskStatus } from '../types/task';
 import type { Dataset } from '../types/dataset';
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
-  TODO: 'Chưa làm',
+  PENDING: 'Chưa làm',
   IN_PROGRESS: 'Đang làm',
-  SUBMITTED: 'Đã nộp',
+  IN_REVIEW: 'Đang duyệt',
   APPROVED: 'Đã duyệt',
   REJECTED: 'Từ chối',
 };
 
 const STATUS_COLOR: Record<TaskStatus, 'default' | 'warning' | 'info' | 'success' | 'error'> = {
-  TODO: 'default',
+  PENDING: 'default',
   IN_PROGRESS: 'warning',
-  SUBMITTED: 'info',
+  IN_REVIEW: 'info',
   APPROVED: 'success',
   REJECTED: 'error',
 };
@@ -94,7 +94,7 @@ const TaskDetailPage = () => {
   };
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || isNaN(Number(id))) return;
     let cancelled = false;
     getTaskById(Number(id)).then((t) => {
       if (cancelled) return;

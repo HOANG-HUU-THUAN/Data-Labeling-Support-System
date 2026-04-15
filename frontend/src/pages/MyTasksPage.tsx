@@ -18,20 +18,20 @@ import {
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { getMyTasks } from '../api/taskApi';
 import useAuthStore from '../store/authStore';
-import type { Task, TaskStatus } from '../types/task';
+import type { Task, TaskStatus, MyTask } from '../types/task';
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
-  TODO: 'Chưa làm',
+  PENDING: 'Chưa làm',
   IN_PROGRESS: 'Đang làm',
-  SUBMITTED: 'Đã nộp',
+  IN_REVIEW: 'Đang duyệt',
   APPROVED: 'Đã duyệt',
   REJECTED: 'Từ chối',
 };
 
 const STATUS_COLOR: Record<TaskStatus, 'default' | 'warning' | 'info' | 'success' | 'error'> = {
-  TODO: 'default',
+  PENDING: 'default',
   IN_PROGRESS: 'warning',
-  SUBMITTED: 'info',
+  IN_REVIEW: 'info',
   APPROVED: 'success',
   REJECTED: 'error',
 };
@@ -39,7 +39,7 @@ const STATUS_COLOR: Record<TaskStatus, 'default' | 'warning' | 'info' | 'success
 const MyTasksPage = () => {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<MyTask[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -81,9 +81,9 @@ const MyTasksPage = () => {
                 </TableRow>
               ) : (
                 tasks.map((task) => (
-                  <TableRow key={task.id} hover>
-                    <TableCell>{task.id}</TableCell>
-                    <TableCell>{task.name}</TableCell>
+                  <TableRow key={task.taskId} hover>
+                    <TableCell>{task.taskId}</TableCell>
+                    <TableCell>{task.projectName}</TableCell>
                     <TableCell>
                       <Chip
                         label={STATUS_LABEL[task.status]}
@@ -96,7 +96,7 @@ const MyTasksPage = () => {
                         <IconButton
                           size="small"
                           color="primary"
-                          onClick={() => navigate(`/annotation/${task.id}`)}
+                          onClick={() => navigate(`/annotation/${task.taskId}`)}
                         >
                           <OpenInNewIcon fontSize="small" />
                         </IconButton>

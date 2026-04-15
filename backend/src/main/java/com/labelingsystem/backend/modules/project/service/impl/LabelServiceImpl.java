@@ -16,6 +16,9 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -24,6 +27,14 @@ public class LabelServiceImpl implements LabelService {
     LabelRepository labelRepository;
     ProjectRepository projectRepository;
     ProjectMapper projectMapper;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LabelResponse> getLabelsByProjectId(Long projectId) {
+        return labelRepository.findByProjectId(projectId).stream()
+                .map(projectMapper::toLabelResponse)
+                .collect(Collectors.toList());
+    }
 
     @Override
     @Transactional

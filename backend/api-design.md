@@ -134,10 +134,78 @@ PUT ---/annotations/{id}
 
 DELETE /annotations/{id} -------(soft delete)
 
+### POST /api/v1/annotations (Save annotations for an image in a task)
+
+Request JSON:
+
+```json
+{
+  "taskId": 123,
+  "imageId": 456,
+  "replaceExisting": true,
+  "annotations": [
+    {
+      "labelId": 1,
+      "type": "BBOX",
+      "coordinates": { "x": 10, "y": 20, "width": 100, "height": 80 }
+    },
+    {
+      "labelId": 2,
+      "type": "POLYGON",
+      "coordinates": { "points": [ [10, 10], [40, 12], [28, 60] ] }
+    },
+    {
+      "labelId": 3,
+      "type": "TAG",
+      "coordinates": { "value": true }
+    }
+  ]
+}
+```
+
+Notes:
+- `coordinates` is stored as `jsonb` and can be any JSON object, depending on the tool/type.
+- If `replaceExisting=true` (default), backend will soft-delete existing annotations (same task+image, same annotator) then insert the new list.
+- When saving annotations for a `PENDING` task, backend automatically sets task status to `IN_PROGRESS`.
+
+Response JSON (wrapped):
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "data": {
+    "taskId": 123,
+    "imageId": 456,
+    "annotationIds": [ 1001, 1002, 1003 ]
+  }
+}
+```
+
 **Submit**
 ----------
 
 POST --/tasks/{taskId}/submit
+
+### POST /api/v1/tasks/{taskId}/submit (Submit task for review)
+
+Behavior:
+- Marks task status to `IN_REVIEW`.
+- Requires the current user to be the assigned annotator (or ADMIN).
+
+Response JSON (wrapped):
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "data": {
+    "taskId": 123,
+    "oldStatus": "IN_PROGRESS",
+    "newStatus": "IN_REVIEW"
+  }
+}
+```
 
 * * * * *
 

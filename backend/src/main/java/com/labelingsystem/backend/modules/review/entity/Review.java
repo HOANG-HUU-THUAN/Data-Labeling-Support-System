@@ -34,6 +34,9 @@ public class Review {
     @Column(name = "comment", columnDefinition = "TEXT")
     private String comment;
 
+    @Column(name = "error_category")
+    private String errorCategory;
+
     @Column(name = "deleted", nullable = false)
     @Builder.Default
     private boolean deleted = false;

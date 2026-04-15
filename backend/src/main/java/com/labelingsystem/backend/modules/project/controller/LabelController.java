@@ -14,6 +14,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
+
+import java.util.List;
+
 @CrossOrigin(origins = "http://localhost:5173")
 //@CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -31,6 +34,15 @@ public class LabelController {
     private boolean checkAdmin(Authentication auth) {
         return ((UserDetailsImpl) auth.getPrincipal()).getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().contains("ADMIN"));
+    }
+
+    // ==========================================
+    // GET LABELS BY PROJECT
+    // ==========================================
+    @GetMapping("/api/projects/{projectId}/labels")
+    @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('MANAGER') or hasAuthority('ANNOTATOR') or hasAuthority('REVIEWER')")
+    public ApiResponse<List<LabelResponse>> getLabelsByProject(@PathVariable Long projectId) {
+        return ApiResponse.success(labelService.getLabelsByProjectId(projectId));
     }
 
     // ==========================================

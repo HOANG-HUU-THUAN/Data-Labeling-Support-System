@@ -8,12 +8,19 @@ import {
   Divider,
   Paper,
   Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  MenuItem,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import LockIcon from '@mui/icons-material/Lock';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 import Tooltip from '@mui/material/Tooltip';
 import { getTaskImages } from '../api/taskApi';
 import type { AnnotationImage } from '../types/task';
@@ -25,14 +32,15 @@ import {
   createAnnotation,
   updateAnnotation,
   deleteAnnotation,
-  lockImage,
-  unlockImage,
   replaceAnnotationsForImage,
 } from '../api/annotationApi';
 import type { Annotation } from '../types/annotation';
 import AnnotationToolbar from '../components/AnnotationToolbar';
+import { submitTask } from '../api/taskApi';
+import { submitReview } from '../api/reviewApi';
+import type { ReviewRequest } from '../types/review';
+import ImageWithAuth from '../components/ImageWithAuth';
 import useAuthStore from '../store/authStore';
-import { submitTask } from '../mock/taskMock';
 
 type DragState =
   | { type: 'draw'; startX: number; startY: number }
@@ -49,7 +57,6 @@ const CORNER_HANDLES = [
 const AnnotationPage = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
-  const user = useAuthStore((s) => s.user);
 
   const [images, setImages] = useState<AnnotationImage[]>([]);
   const [selectedImage, setSelectedImage] = useState<AnnotationImage | null>(null);
@@ -60,9 +67,7 @@ const AnnotationPage = () => {
   const [currentAnnotations, setCurrentAnnotations] = useState<Annotation[]>([]);
   // annotation count badge per image
   const [annotationCounts, setAnnotationCounts] = useState<Record<number, number>>({});
-  // lock state
-  const [isLocked, setIsLocked] = useState(false);
-  const lockedImageRef = useRef<number | null>(null);
+  // lock state removed
   // selected box + drag
   const [selectedBoxId, setSelectedBoxId] = useState<number | null>(null);
   const dragModeRef = useRef<DragState | null>(null);
@@ -71,6 +76,13 @@ const AnnotationPage = () => {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const user = useAuthStore((s) => s.user);
+  const isReviewerOrAdmin = user?.role === 'REVIEWER' || user?.role === 'ADMIN';
+
+  const [openRejectDialog, setOpenRejectDialog] = useState(false);
+  const [errorCategory, setErrorCategory] = useState('');
+  const [rejectionNote, setRejectionNote] = useState('');
 
   // Undo / redo
   const historyRef = useRef<Annotation[][]>([]);
@@ -122,6 +134,7 @@ const AnnotationPage = () => {
   useEffect(() => {
     if (!taskId) return;
     const id = Number(taskId);
+    if (isNaN(id)) return;
     Promise.all([getTaskImages(id), getTaskById(id)]).then(([imgs, task]) => {
       setImages(imgs);
       if (task) {
@@ -143,29 +156,7 @@ const AnnotationPage = () => {
     });
   }, [taskId]);
 
-  // Lock/unlock when selected image changes
-  useEffect(() => {
-    if (!selectedImage || !user) return;
-    let cancelled = false;
-    // Release previous lock if switching images
-    if (lockedImageRef.current !== null && lockedImageRef.current !== selectedImage.id) {
-      unlockImage(lockedImageRef.current);
-      lockedImageRef.current = null;
-    }
-    lockImage(selectedImage.id, user.id).then(({ locked }) => {
-      if (cancelled) return;
-      setIsLocked(locked);
-      if (!locked) lockedImageRef.current = selectedImage.id;
-    });
-    return () => { cancelled = true; };
-  }, [selectedImage, user]);
-
-  // Unlock on page unmount
-  useEffect(() => {
-    return () => {
-      if (lockedImageRef.current !== null) unlockImage(lockedImageRef.current);
-    };
-  }, []);
+  // Lock/unlock removed
 
   // Load annotations whenever selected image changes; also seeds undo/redo history
   useEffect(() => {
@@ -274,7 +265,7 @@ const AnnotationPage = () => {
   };
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isLocked || !selectedLabel || !selectedImage) return;
+    if (!selectedLabel || !selectedImage) return;
     e.preventDefault();
     const pos = getRelativePos(e);
     dragModeRef.current = { type: 'draw', startX: pos.x, startY: pos.y };
@@ -283,7 +274,6 @@ const AnnotationPage = () => {
   };
 
   const handleBoxMouseDown = (e: React.MouseEvent, ann: Annotation) => {
-    if (isLocked) return;
     e.stopPropagation();
     e.preventDefault();
     setSelectedBoxId(ann.id);
@@ -292,7 +282,6 @@ const AnnotationPage = () => {
   };
 
   const handleCornerMouseDown = (e: React.MouseEvent, ann: Annotation, corner: 'tl' | 'tr' | 'bl' | 'br') => {
-    if (isLocked) return;
     e.stopPropagation();
     e.preventDefault();
     const pos = getRelativePos(e);
@@ -367,10 +356,45 @@ const AnnotationPage = () => {
     }
     if (!window.confirm('Bạn có chắc muốn nộp task? Sau khi nộp bạn sẽ không thể chỉnh sửa thêm.')) return;
     setSubmitting(true);
-    if (lockedImageRef.current !== null) unlockImage(lockedImageRef.current);
     submitTask(Number(taskId)).then(() => {
       navigate('/my-tasks');
-    }).catch(() => setSubmitting(false));
+    }).catch((err: any) => {
+      setSubmitting(false);
+      setSubmitError(err.response?.data?.message || 'Lỗi nộp task');
+    });
+  };
+
+  const handleApproveTask = () => {
+    if (!taskId) return;
+    if (!window.confirm('Bạn có chắc muốn phê duyệt task này?')) return;
+    setSubmitting(true);
+    submitReview({ taskId: Number(taskId), status: 'APPROVED' }).then(() => {
+      navigate('/tasks/review');
+    }).catch((err: any) => {
+      setSubmitting(false);
+      setSubmitError(err.response?.data?.message || 'Lỗi phê duyệt task');
+    });
+  };
+
+  const handleRejectTask = () => {
+    if (!errorCategory) {
+      setSubmitError('Vui lòng chọn loại lỗi');
+      return;
+    }
+    if (!taskId) return;
+    setSubmitting(true);
+    submitReview({
+      taskId: Number(taskId),
+      status: 'REJECTED',
+      errorCategory,
+      comment: rejectionNote,
+    }).then(() => {
+      setOpenRejectDialog(false);
+      navigate('/tasks/review');
+    }).catch((err: any) => {
+      setSubmitting(false);
+      setSubmitError(err.response?.data?.message || 'Lỗi từ chối task');
+    });
   };
 
   return (
@@ -381,7 +405,6 @@ const AnnotationPage = () => {
           startIcon={<ArrowBackIcon />}
           variant="text"
           onClick={() => {
-            if (lockedImageRef.current !== null) unlockImage(lockedImageRef.current);
             navigate('/my-tasks');
           }}
         >
@@ -424,15 +447,40 @@ const AnnotationPage = () => {
             </span>
           </Tooltip>
           {!loading && images.length > 0 && (
-            <Button
-              variant="contained"
-              color="primary"
-              disabled={submitting || saving}
-              onClick={handleSubmit}
-              sx={{ ml: 1 }}
-            >
-              {submitting ? <CircularProgress size={18} color="inherit" /> : 'Nộp task'}
-            </Button>
+            isReviewerOrAdmin ? (
+              <>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  disabled={submitting || saving}
+                  onClick={() => setOpenRejectDialog(true)}
+                  startIcon={<CloseIcon />}
+                  sx={{ ml: 1, px: 2 }}
+                >
+                  Từ chối
+                </Button>
+                <Button
+                  variant="contained"
+                  color="success"
+                  disabled={submitting || saving}
+                  onClick={handleApproveTask}
+                  startIcon={<CheckIcon />}
+                  sx={{ ml: 1, px: 2 }}
+                >
+                  {submitting ? <CircularProgress size={18} color="inherit" /> : 'Phê duyệt'}
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="contained"
+                color="primary"
+                disabled={submitting || saving}
+                onClick={handleSubmit}
+                sx={{ ml: 1 }}
+              >
+                {submitting ? <CircularProgress size={18} color="inherit" /> : 'Nộp task'}
+              </Button>
+            )
           )}
         </Box>
       </Box>
@@ -487,8 +535,7 @@ const AnnotationPage = () => {
                 onClick={() => { setAnnotations([]); setSelectedImage(img); }}
                 sx={{ position: 'relative', cursor: 'pointer' }}
               >
-                <Box
-                  component="img"
+                <ImageWithAuth
                   src={img.url}
                   alt={img.name}
                   sx={{
@@ -535,15 +582,7 @@ const AnnotationPage = () => {
               p: 2,
             }}
           >
-            {isLocked && (
-              <Alert
-                severity="warning"
-                icon={<LockIcon fontSize="small" />}
-                sx={{ mb: 1, flexShrink: 0 }}
-              >
-                Ảnh đang được người khác chỉnh sửa. Bạn chỉ có thể xem.
-              </Alert>
-            )}
+
             <Box
               display="flex"
               alignItems="center"
@@ -559,7 +598,7 @@ const AnnotationPage = () => {
                   maxWidth="100%"
                   sx={{
                     userSelect: 'none',
-                    cursor: isLocked ? 'default' : selectedLabel ? 'crosshair' : 'default',
+                    cursor: selectedLabel ? 'crosshair' : 'default',
                   }}
                   onMouseDown={handleCanvasMouseDown}
                   onMouseMove={handleCanvasMouseMove}
@@ -567,8 +606,7 @@ const AnnotationPage = () => {
                   onMouseLeave={handleCanvasMouseLeave}
                 >
                   {/* Base image */}
-                  <Box
-                    component="img"
+                  <ImageWithAuth
                     src={selectedImage.url}
                     alt={selectedImage.name}
                     draggable={false}
@@ -588,7 +626,7 @@ const AnnotationPage = () => {
                       <Box
                         key={ann.id}
                         onMouseDown={(e) => handleBoxMouseDown(e, ann)}
-                        onContextMenu={(e) => { e.preventDefault(); if (!isLocked) handleDeleteAnnotation(ann.id); }}
+                        onContextMenu={(e) => { e.preventDefault(); handleDeleteAnnotation(ann.id); }}
                         sx={{
                           position: 'absolute',
                           left: `${ann.x}%`,
@@ -598,7 +636,7 @@ const AnnotationPage = () => {
                           border: `${isSelected ? 3 : 2}px solid ${color}`,
                           outline: isSelected ? '2px solid rgba(255,255,255,0.55)' : 'none',
                           outlineOffset: '-2px',
-                          cursor: isLocked ? 'default' : 'move',
+                          cursor: 'move',
                           pointerEvents: 'auto',
                           boxSizing: 'border-box',
                           '&:hover': {
@@ -625,8 +663,7 @@ const AnnotationPage = () => {
                         >
                           {labels.find((l) => l.id === ann.labelId)?.name ?? ''}
                         </Typography>
-                        {/* Delete button — shown only on selected box */}
-                        {isSelected && !isLocked && (
+                        {isSelected && (
                           <Box
                             onMouseDown={(e) => { e.stopPropagation(); handleDeleteAnnotation(ann.id); }}
                             title="Xóa box"
@@ -649,8 +686,7 @@ const AnnotationPage = () => {
                             <DeleteForeverIcon sx={{ fontSize: 13 }} />
                           </Box>
                         )}
-                        {/* Corner resize handles — shown only on selected box */}
-                        {isSelected && !isLocked && CORNER_HANDLES.map(({ key, cursor, sx }) => (
+                        {isSelected && CORNER_HANDLES.map(({ key, cursor, sx }) => (
                           <Box
                             key={key}
                             onMouseDown={(e) => handleCornerMouseDown(e, ann, key)}
@@ -694,6 +730,46 @@ const AnnotationPage = () => {
           </Paper>
         </Box>
       )}
+
+      {/* Reject Task Dialog */}
+      <Dialog open={openRejectDialog} onClose={() => setOpenRejectDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Từ chối Task</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, mt: 1 }}>
+            Vui lòng chọn loại lỗi và để lại ghi chú cho Annotator biết nguyên nhân task bị từ chối.
+          </Typography>
+          <TextField
+             select
+             label="Loại lỗi (Bắt buộc)"
+             fullWidth
+             value={errorCategory}
+             onChange={(e) => {
+               setErrorCategory(e.target.value);
+               setSubmitError(null);
+             }}
+             sx={{ mb: 2 }}
+          >
+             <MenuItem value="Vẽ thiếu (Missing box)">Vẽ thiếu (Missing box)</MenuItem>
+             <MenuItem value="Vẽ lệch/Rộng/Hẹp quá">Vẽ lệch/Rộng/Hẹp quá</MenuItem>
+             <MenuItem value="Gán sai nhãn (Wrong label)">Gán sai nhãn (Wrong label)</MenuItem>
+             <MenuItem value="Lỗi khác">Lỗi khác</MenuItem>
+          </TextField>
+          <TextField
+             label="Ghi chú chi tiết (Tùy chọn)"
+             fullWidth
+             multiline
+             rows={3}
+             value={rejectionNote}
+             onChange={(e) => setRejectionNote(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenRejectDialog(false)}>Hủy</Button>
+          <Button variant="contained" color="error" onClick={handleRejectTask} disabled={submitting}>
+            {submitting ? <CircularProgress size={18} color="inherit" /> : 'Xác nhận từ chối'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

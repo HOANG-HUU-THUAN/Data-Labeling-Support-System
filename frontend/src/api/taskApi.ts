@@ -1,5 +1,5 @@
 import axiosInstance from './axios';
-import type { Task, TaskStatus } from '../types/task';
+import type { Task, TaskStatus, MyTask } from '../types/task';
 
 // The backend endpoints I need:
 // POST /v1/projects/{projectId}/tasks/batch -> createBatchTasks
@@ -18,15 +18,17 @@ export const getTaskById = async (id: number): Promise<Task | undefined> => {
   return response.data.data;
 };
 
-export const createTask = async (data: {
-  name: string;
-  projectId: number;
-  datasetIds: number[];
-  assigneeId?: number;
-}): Promise<Task> => {
-  // If we assume a generic create endpoint in case taskController adds it:
-  const response = await axiosInstance.post(`/v1/tasks`, data);
-  return response.data.data;
+export const createBatchTasks = async (
+  projectId: number,
+  data: {
+    datasetId: number;
+    imagesPerTask: number;
+    annotatorIds: number[];
+    reviewerIds?: number[];
+  }
+): Promise<string> => {
+  const response = await axiosInstance.post(`/v1/projects/${projectId}/tasks/batch`, data);
+  return response.data; // Server returns ApiResponse<String> for this endpoint. (Wait it's response.data.data for the innermost data)
 };
 
 export const deleteTask = async (id: number): Promise<void> => {
@@ -56,14 +58,22 @@ export const submitTask = async (id: number): Promise<Task> => {
   return response.data.data;
 };
 
-export const getMyTasks = async (_userId?: number): Promise<Task[]> => {
-  // Assuming backend uses auth token, might not even need userId
+export const getMyTasks = async (): Promise<MyTask[]> => {
   const response = await axiosInstance.get(`/v1/tasks/my-tasks`);
+  return response.data.data;
+};
+
+export const getTasksForReview = async (): Promise<MyTask[]> => {
+  const response = await axiosInstance.get(`/v1/tasks/review`);
   return response.data.data;
 };
 
 export const getTaskImages = async (taskId: number): Promise<{ id: number, name: string, url: string }[]> => {
   const response = await axiosInstance.get(`/v1/tasks/${taskId}/images`);
-  return response.data.data;
+  return response.data.data.map((item: any) => ({
+    id: item.imageId,
+    name: item.filePath,
+    url: item.originalUrl,
+  }));
 };
 

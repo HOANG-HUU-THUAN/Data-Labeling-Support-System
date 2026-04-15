@@ -7,7 +7,18 @@ export interface Task {
   assigneeId?: number;
 }
 
-export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+export interface MyTask {
+  taskId: number;
+  projectId: number;
+  projectName: string;
+  status: TaskStatus;
+  assignedAnnotatorId: number;
+  assignedReviewerId: number;
+  imageCount: number;
+  createdAt: string;
+}
+
+export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED';
 
 export interface AnnotationImage {
   id: number;
