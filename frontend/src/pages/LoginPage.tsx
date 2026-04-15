@@ -17,7 +17,7 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
 
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,7 +28,7 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const { token, user } = await loginApi(email, password);
+      const { token, user } = await loginApi(username, password);
       login(token, user);
       navigate('/');
     } catch (err: unknown) {
@@ -69,14 +69,14 @@ const LoginPage = () => {
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <TextField
               fullWidth
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              label="Tài khoản"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               margin="normal"
               required
               autoFocus
-              autoComplete="email"
+              autoComplete="username"
             />
             <TextField
               fullWidth

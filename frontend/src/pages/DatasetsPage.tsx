@@ -19,8 +19,8 @@ import {
   Typography,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { getProjects } from '../mock/projectMock';
-import { deleteDataset, getDatasetsByProject, uploadDataset } from '../mock/datasetMock';
+import { getProjects } from '../api/projectApi';
+import { deleteDataset, getDatasetsByProject, uploadDataset } from '../api/datasetApi';
 import type { Project } from '../types/project';
 import type { Dataset } from '../types/dataset';
 

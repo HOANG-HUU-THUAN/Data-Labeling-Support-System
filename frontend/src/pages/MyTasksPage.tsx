@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
-  Button,
   Chip,
   CircularProgress,
   IconButton,
@@ -17,7 +16,7 @@ import {
   Typography,
 } from '@mui/material';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import { getMyTasks } from '../mock/annotatorMock';
+import { getMyTasks } from '../api/taskApi';
 import useAuthStore from '../store/authStore';
 import type { Task, TaskStatus } from '../types/task';
 

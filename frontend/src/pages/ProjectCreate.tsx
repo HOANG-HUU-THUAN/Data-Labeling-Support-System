@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Button, CircularProgress, Paper, Stack, TextField, Typography } from '@mui/material';
-import { createProject } from '../mock/projectMock';
+import { createProject } from '../api/projectApi';
 
 export default function ProjectCreate() {
   const navigate = useNavigate();

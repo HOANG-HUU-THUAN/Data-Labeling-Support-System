@@ -14,7 +14,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material';
-import { getProjects, deleteProject } from '../mock/projectMock';
+import { getProjects, deleteProject } from '../api/projectApi';
 import type { Project } from '../types/project';
 import ConfirmDialog from '../components/ConfirmDialog';
 

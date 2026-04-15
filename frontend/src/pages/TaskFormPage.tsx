@@ -18,9 +18,9 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { getProjects } from '../mock/projectMock';
-import { getDatasetsByProject } from '../mock/datasetMock';
-import { createTask, getTaskById, updateTask } from '../mock/taskMock';
+import { getProjects } from '../api/projectApi';
+import { getDatasetsByProject } from '../api/datasetApi';
+import { createTask, getTaskById, updateTask } from '../api/taskApi';
 import type { Project } from '../types/project';
 import type { Dataset } from '../types/dataset';
 

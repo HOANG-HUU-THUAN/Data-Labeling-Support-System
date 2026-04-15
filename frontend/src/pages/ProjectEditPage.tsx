@@ -10,7 +10,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { getProjectById, updateProject } from '../mock/projectMock';
+import { getProjectById, updateProject } from '../api/projectApi';
 
 export default function ProjectEditPage() {
   const { id } = useParams<{ id: string }>();

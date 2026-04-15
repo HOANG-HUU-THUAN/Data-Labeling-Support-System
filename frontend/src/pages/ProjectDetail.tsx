@@ -4,8 +4,8 @@ import {
   Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
   DialogTitle, Divider, Paper, Stack, TextField, Typography,
 } from '@mui/material';
-import { getProjectById, deleteProject } from '../mock/projectMock';
-import { getLabelsByProject, createLabel, updateLabel, deleteLabel } from '../mock/labelMock';
+import { getProjectById, deleteProject } from '../api/projectApi';
+import { getLabelsByProject, createLabel, updateLabel, deleteLabel } from '../api/labelApi';
 import type { Project } from '../types/project';
 import type { Label } from '../types/label';
 import ConfirmDialog from '../components/ConfirmDialog';

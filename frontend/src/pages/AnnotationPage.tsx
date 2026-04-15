@@ -15,10 +15,10 @@ import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
 import Tooltip from '@mui/material/Tooltip';
-import { getTaskImages } from '../mock/annotatorMock';
-import type { AnnotationImage } from '../mock/annotatorMock';
-import { getTaskById } from '../mock/taskMock';
-import { getLabelsByProject } from '../mock/labelMock';
+import { getTaskImages } from '../api/taskApi';
+import type { AnnotationImage } from '../types/task';
+import { getTaskById } from '../api/taskApi';
+import { getLabelsByProject } from '../api/labelApi';
 import type { Label } from '../types/label';
 import {
   getAnnotationsByImage,
@@ -28,7 +28,7 @@ import {
   lockImage,
   unlockImage,
   replaceAnnotationsForImage,
-} from '../mock/annotationMock';
+} from '../api/annotationApi';
 import type { Annotation } from '../types/annotation';
 import AnnotationToolbar from '../components/AnnotationToolbar';
 import useAuthStore from '../store/authStore';

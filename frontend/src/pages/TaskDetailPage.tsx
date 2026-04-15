@@ -20,8 +20,8 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import { assignTask, deleteTask, getTaskById, updateTaskStatus } from '../mock/taskMock';
-import { getDatasetsByProject } from '../mock/datasetMock';
+import { assignTask, deleteTask, getTaskById, updateTaskStatus } from '../api/taskApi';
+import { getDatasetsByProject } from '../api/datasetApi';
 import type { Task, TaskStatus } from '../types/task';
 import type { Dataset } from '../types/dataset';
 

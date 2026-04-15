@@ -19,7 +19,7 @@ import {
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { getTasks, deleteTask } from '../mock/taskMock';
+import { getTasks, deleteTask } from '../api/taskApi';
 import type { Task, TaskStatus } from '../types/task';
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
