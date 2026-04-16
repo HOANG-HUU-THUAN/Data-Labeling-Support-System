@@ -1,7 +1,7 @@
 package com.labelingsystem.backend.modules.annotation.service;
 
-import com.labelingsystem.backend.modules.annotation.dto.AnnotationRequest;
-import com.labelingsystem.backend.modules.annotation.dto.AnnotationResponse;
+import com.labelingsystem.backend.modules.annotation.dto.request.AnnotationRequest;
+import com.labelingsystem.backend.modules.annotation.dto.response.AnnotationResponse;
 import java.util.List;
 
 public interface AnnotationService {

@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.labelingsystem.backend.common.exception.ResourceNotFoundException;
-import com.labelingsystem.backend.modules.annotation.dto.AnnotationRequest;
-import com.labelingsystem.backend.modules.annotation.dto.AnnotationResponse;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.labelingsystem.backend.modules.annotation.dto.request.AnnotationRequest;
+import com.labelingsystem.backend.modules.annotation.dto.response.AnnotationResponse;
+import com.labelingsystem.backend.modules.annotation.dto.PointDTO;
 import com.labelingsystem.backend.modules.annotation.entity.Annotation;
 import com.labelingsystem.backend.modules.annotation.repository.AnnotationRepository;
 import com.labelingsystem.backend.modules.annotation.service.AnnotationService;
@@ -49,12 +51,12 @@ public class AnnotationServiceImpl implements AnnotationService {
     public AnnotationResponse createAnnotation(AnnotationRequest request) {
         Image image = imageRepository.findById(request.getImageId())
                 .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
-        
+
         Long taskId = request.getTaskId();
         if (taskId == null) {
             List<Task> tasks = taskRepository.findAll().stream()
-                .filter(t -> t.getImages().contains(image) && !t.isDeleted())
-                .collect(Collectors.toList());
+                    .filter(t -> t.getImages().contains(image) && !t.isDeleted())
+                    .collect(Collectors.toList());
             if (tasks.isEmpty()) {
                 throw new ResourceNotFoundException("No task found for this image");
             }
@@ -65,7 +67,7 @@ public class AnnotationServiceImpl implements AnnotationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
         Label label = labelRepository.findById(request.getLabelId())
                 .orElseThrow(() -> new ResourceNotFoundException("Label not found"));
-        
+
         User currentUser = getCurrentUser();
 
         Annotation annotation = Annotation.builder()
@@ -132,33 +134,55 @@ public class AnnotationServiceImpl implements AnnotationService {
 
     private JsonNode mapCoordinatesToJson(AnnotationRequest request) {
         ObjectNode node = objectMapper.createObjectNode();
-        node.put("x", request.getX());
-        node.put("y", request.getY());
-        node.put("w", request.getW());
-        node.put("h", request.getH());
+        if ("POLYGON".equals(request.getType()) && request.getPoints() != null) {
+            node.set("points", objectMapper.valueToTree(request.getPoints()));
+        } else {
+            node.put("x", request.getX());
+            node.put("y", request.getY());
+            node.put("w", request.getW());
+            node.put("h", request.getH());
+        }
         return node;
     }
 
     private JsonNode updateCoordinatesJson(JsonNode existing, AnnotationRequest request) {
         ObjectNode node = (ObjectNode) existing;
-        if (request.getX() != null) node.put("x", request.getX());
-        if (request.getY() != null) node.put("y", request.getY());
-        if (request.getW() != null) node.put("w", request.getW());
-        if (request.getH() != null) node.put("h", request.getH());
+        if ("POLYGON".equals(request.getType()) && request.getPoints() != null) {
+            node.set("points", objectMapper.valueToTree(request.getPoints()));
+        } else {
+            if (request.getX() != null) node.put("x", request.getX());
+            if (request.getY() != null) node.put("y", request.getY());
+            if (request.getW() != null) node.put("w", request.getW());
+            if (request.getH() != null) node.put("h", request.getH());
+        }
         return node;
     }
 
     private AnnotationResponse mapToResponse(Annotation annotation) {
         JsonNode coords = annotation.getCoordinates();
-        return AnnotationResponse.builder()
+        AnnotationResponse.AnnotationResponseBuilder builder = AnnotationResponse.builder()
                 .id(annotation.getId())
                 .imageId(annotation.getImage().getId())
                 .labelId(annotation.getLabel().getId())
-                .x(coords.has("x") ? coords.get("x").asDouble() : 0.0)
-                .y(coords.has("y") ? coords.get("y").asDouble() : 0.0)
-                .w(coords.has("w") ? coords.get("w").asDouble() : 0.0)
-                .h(coords.has("h") ? coords.get("h").asDouble() : 0.0)
-                .type(annotation.getType())
-                .build();
+                .type(annotation.getType());
+
+        if ("POLYGON".equals(annotation.getType()) && coords != null && coords.has("points")) {
+            try {
+                List<PointDTO> points = objectMapper.convertValue(
+                    coords.get("points"), 
+                    new TypeReference<List<PointDTO>>() {}
+                );
+                builder.points(points);
+            } catch (Exception e) {
+                // Ignore or log
+            }
+        } else {
+            builder.x(coords.has("x") ? coords.get("x").asDouble() : 0.0)
+                   .y(coords.has("y") ? coords.get("y").asDouble() : 0.0)
+                   .w(coords.has("w") ? coords.get("w").asDouble() : 0.0)
+                   .h(coords.has("h") ? coords.get("h").asDouble() : 0.0);
+        }
+
+        return builder.build();
     }
 }

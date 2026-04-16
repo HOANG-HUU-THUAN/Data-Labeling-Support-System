@@ -1,4 +1,7 @@
-package com.labelingsystem.backend.modules.annotation.dto;
+package com.labelingsystem.backend.modules.annotation.dto.response;
+
+import com.labelingsystem.backend.modules.annotation.dto.PointDTO;
+import java.util.List;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,4 +21,5 @@ public class AnnotationResponse {
     private Double w;
     private Double h;
     private String type;
+    private List<PointDTO> points;
 }

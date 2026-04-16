@@ -9,13 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AnnotationRequest {
-    private Long imageId;
-    private Long taskId; // Optional, can be inferred if null
-    private Long labelId;
+public class PointDTO {
     private Double x;
     private Double y;
-    private Double w;
-    private Double h;
-    private String type; // BOX, POLYGON, etc.
 }

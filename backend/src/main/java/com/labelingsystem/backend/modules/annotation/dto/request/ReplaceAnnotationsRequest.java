@@ -1,4 +1,4 @@
-package com.labelingsystem.backend.modules.annotation.dto;
+package com.labelingsystem.backend.modules.annotation.dto.request;
 
 import lombok.Data;
 import java.util.List;

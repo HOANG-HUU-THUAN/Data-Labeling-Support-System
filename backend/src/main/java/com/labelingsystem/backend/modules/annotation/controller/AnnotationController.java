@@ -1,9 +1,9 @@
 package com.labelingsystem.backend.modules.annotation.controller;
 
 import com.labelingsystem.backend.common.response.ApiResponse;
-import com.labelingsystem.backend.modules.annotation.dto.AnnotationRequest;
-import com.labelingsystem.backend.modules.annotation.dto.AnnotationResponse;
-import com.labelingsystem.backend.modules.annotation.dto.ReplaceAnnotationsRequest;
+import com.labelingsystem.backend.modules.annotation.dto.request.AnnotationRequest;
+import com.labelingsystem.backend.modules.annotation.dto.response.AnnotationResponse;
+import com.labelingsystem.backend.modules.annotation.dto.request.ReplaceAnnotationsRequest;
 import com.labelingsystem.backend.modules.annotation.service.AnnotationService;
 import com.labelingsystem.backend.security.service.UserDetailsImpl;
 import jakarta.validation.Valid;
