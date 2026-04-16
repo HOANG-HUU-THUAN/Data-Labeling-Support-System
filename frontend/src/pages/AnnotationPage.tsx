@@ -38,7 +38,6 @@ import type { Annotation } from '../types/annotation';
 import AnnotationToolbar from '../components/AnnotationToolbar';
 import { submitTask } from '../api/taskApi';
 import { submitReview } from '../api/reviewApi';
-import type { ReviewRequest } from '../types/review';
 import ImageWithAuth from '../components/ImageWithAuth';
 import useAuthStore from '../store/authStore';
 
@@ -369,7 +368,7 @@ const AnnotationPage = () => {
     if (!window.confirm('Bạn có chắc muốn phê duyệt task này?')) return;
     setSubmitting(true);
     submitReview({ taskId: Number(taskId), status: 'APPROVED' }).then(() => {
-      navigate('/tasks/review');
+      navigate('/review');
     }).catch((err: any) => {
       setSubmitting(false);
       setSubmitError(err.response?.data?.message || 'Lỗi phê duyệt task');
@@ -390,7 +389,7 @@ const AnnotationPage = () => {
       comment: rejectionNote,
     }).then(() => {
       setOpenRejectDialog(false);
-      navigate('/tasks/review');
+      navigate('/review');
     }).catch((err: any) => {
       setSubmitting(false);
       setSubmitError(err.response?.data?.message || 'Lỗi từ chối task');
@@ -405,7 +404,7 @@ const AnnotationPage = () => {
           startIcon={<ArrowBackIcon />}
           variant="text"
           onClick={() => {
-            navigate('/my-tasks');
+            navigate(isReviewerOrAdmin ? '/review' : '/my-tasks');
           }}
         >
           Quay lại

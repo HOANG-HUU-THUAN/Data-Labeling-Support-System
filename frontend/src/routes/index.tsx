@@ -52,8 +52,8 @@ const AppRoutes = () => {
 
       {/* ANNOTATOR only */}
       <Route path="/my-tasks" element={<ProtectedRoute roles={['ANNOTATOR']}>{withLayout(<MyTasksPage />)}</ProtectedRoute>} />
-      <Route path="/annotation/:taskId" element={<ProtectedRoute roles={['ANNOTATOR']}>{withLayout(<AnnotationPage />)}</ProtectedRoute>} />
-      <Route path="/annotation" element={<ProtectedRoute roles={['ANNOTATOR']}>{withLayout(<AnnotationPage />)}</ProtectedRoute>} />
+      <Route path="/annotation/:taskId" element={<ProtectedRoute roles={['ANNOTATOR', 'REVIEWER', 'MANAGER', 'ADMIN']}>{withLayout(<AnnotationPage />)}</ProtectedRoute>} />
+      <Route path="/annotation" element={<ProtectedRoute roles={['ANNOTATOR', 'REVIEWER', 'MANAGER', 'ADMIN']}>{withLayout(<AnnotationPage />)}</ProtectedRoute>} />
 
       {/* REVIEWER only */}
       <Route path="/review" element={<ProtectedRoute roles={['REVIEWER']}>{withLayout(<ReviewPage />)}</ProtectedRoute>} />
