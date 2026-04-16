@@ -125,8 +125,8 @@ const TaskFormPage = () => {
         await updateTask(Number(id), {
           name: name.trim(),
           datasetIds: datasetId !== '' ? [datasetId as number] : [],
-          assigneeId: annotatorIds.length > 0 ? annotatorIds[0] : undefined,
-          reviewerId: reviewerIds.length > 0 ? reviewerIds[0] : undefined,
+          assigneeId: annotatorIds.length > 0 ? annotatorIds[0] : null,
+          reviewerId: reviewerIds.length > 0 ? reviewerIds[0] : null,
         });
       } else {
         await createBatchTasks(projectId as number, {

@@ -13,6 +13,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class TaskResponse {
     Long id;
+    String name;
     Long projectId;
     List<Long> datasetIds;
     Long assigneeId;

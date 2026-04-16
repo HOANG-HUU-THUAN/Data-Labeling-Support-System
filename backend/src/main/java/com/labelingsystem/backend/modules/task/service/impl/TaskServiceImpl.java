@@ -67,16 +67,24 @@ public class TaskServiceImpl implements TaskService {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
         
+        if (request.getName() != null) {
+            task.setName(request.getName());
+        }
+
         if (request.getAssigneeId() != null) {
             User user = userRepository.findById(request.getAssigneeId())
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
             task.setAssignedAnnotator(user);
+        } else if (request.getAssigneeId() == null) {
+            task.setAssignedAnnotator(null);
         }
 
         if (request.getReviewerId() != null) {
             User user = userRepository.findById(request.getReviewerId())
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
             task.setAssignedReviewer(user);
+        } else if (request.getReviewerId() == null) {
+            task.setAssignedReviewer(null);
         }
         
         return mapToTaskResponse(taskRepository.save(task));
@@ -128,6 +136,7 @@ public class TaskServiceImpl implements TaskService {
 
         return TaskResponse.builder()
                 .id(task.getId())
+                .name(task.getName())
                 .projectId(task.getProject().getId())
                 .datasetIds(datasetIds)
                 .assigneeId(task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getId() : null)
@@ -183,6 +192,7 @@ public class TaskServiceImpl implements TaskService {
 
             Task task = Task.builder()
                     .project(project)
+                    .name("Task - " + dataset.getName() + " - " + (taskCount + 1))
                     .assignedAnnotator(assignedAnnotator)
                     .assignedReviewer(assignedReviewer)
                     .status("PENDING")

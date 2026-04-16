@@ -215,7 +215,7 @@ const TaskDetailPage = () => {
           </Box>
 
           <Divider />
-          <Box>
+          {/* <Box>
             <Typography variant="body2" fontWeight={500} mb={1}>
               Gán người thực hiện
             </Typography>
@@ -233,7 +233,7 @@ const TaskDetailPage = () => {
               </Select>
             </FormControl>
             {assigning && <CircularProgress size={16} sx={{ ml: 1, verticalAlign: 'middle' }} />}
-          </Box>
+          </Box> */}
 
           <Divider />
 

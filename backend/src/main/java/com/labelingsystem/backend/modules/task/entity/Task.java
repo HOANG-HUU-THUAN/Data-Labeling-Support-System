@@ -25,6 +25,9 @@ public class Task {
     @Column(name = "id")
     private Long id;
 
+    @Column(name = "name", length = 256)
+    private String name;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
