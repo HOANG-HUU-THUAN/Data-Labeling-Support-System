@@ -40,6 +40,7 @@ import { submitTask } from '../api/taskApi';
 import { submitReview } from '../api/reviewApi';
 import ImageWithAuth from '../components/ImageWithAuth';
 import useAuthStore from '../store/authStore';
+import type { PointDTO } from '../types/annotation';
 
 type DragState =
   | { type: 'draw'; startX: number; startY: number }
@@ -72,6 +73,9 @@ const AnnotationPage = () => {
   const dragModeRef = useRef<DragState | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [previewBox, setPreviewBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [tool, setTool] = useState<'BOX' | 'POLYGON'>('BOX');
+  const [activePoints, setActivePoints] = useState<PointDTO[]>([]);
+  const [mousePos, setMousePos] = useState<PointDTO | null>(null);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -226,7 +230,7 @@ const AnnotationPage = () => {
       const h = Math.abs(pos.y - mode.startY);
       if (w <= 1 || h <= 1 || !selectedLabel || !selectedImage) return;
       setSaving(true);
-      createAnnotation({ imageId: selectedImage.id, labelId: selectedLabel.id, x, y, w, h }).then((ann) => {
+      createAnnotation({ imageId: selectedImage.id, labelId: selectedLabel.id, x, y, w, h, type: 'BOX' }).then((ann) => {
         const next = [...currentAnnotationsRef.current, ann];
         setAnnotations(next);
         pushHistory(next);
@@ -267,9 +271,47 @@ const AnnotationPage = () => {
     if (!selectedLabel || !selectedImage) return;
     e.preventDefault();
     const pos = getRelativePos(e);
-    dragModeRef.current = { type: 'draw', startX: pos.x, startY: pos.y };
-    setPreviewBox({ x: pos.x, y: pos.y, w: 0, h: 0 });
-    setSelectedBoxId(null);
+
+    if (tool === 'BOX') {
+        dragModeRef.current = { type: 'draw', startX: pos.x, startY: pos.y };
+        setPreviewBox({ x: pos.x, y: pos.y, w: 0, h: 0 });
+        setSelectedBoxId(null);
+    } else {
+        // POLYGON logic
+        setActivePoints(prev => [...prev, pos]);
+        setSelectedBoxId(null);
+    }
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if (tool !== 'POLYGON' || activePoints.length < 3 || !selectedLabel || !selectedImage) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Finalize polygon
+    const points = [...activePoints];
+    const xs = points.map(p => p.x);
+    const ys = points.map(p => p.y);
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    const w = Math.max(...xs) - x;
+    const h = Math.max(...ys) - y;
+
+    setSaving(true);
+    createAnnotation({
+      imageId: selectedImage.id,
+      labelId: selectedLabel.id,
+      type: 'POLYGON',
+      points,
+      x, y, w, h
+    }).then(ann => {
+      const next = [...currentAnnotationsRef.current, ann];
+      setAnnotations(next);
+      pushHistory(next);
+      setAnnotationCounts(prev => ({ ...prev, [selectedImage.id]: (prev[selectedImage.id] ?? 0) + 1 }));
+      setActivePoints([]);
+      setSaving(false);
+    });
   };
 
   const handleBoxMouseDown = (e: React.MouseEvent, ann: Annotation) => {
@@ -490,6 +532,12 @@ const AnnotationPage = () => {
           labels={labels}
           selectedLabel={selectedLabel}
           onLabelChange={setSelectedLabel}
+          tool={tool}
+          onToolChange={(t) => {
+            setTool(t);
+            setActivePoints([]);
+            setPreviewBox(null);
+          }}
         />
       )}
 
@@ -589,7 +637,7 @@ const AnnotationPage = () => {
               flex={1}
               overflow="hidden"
             >
-            {selectedImage ? (
+              {selectedImage ? (
                 <Box
                   ref={canvasRef}
                   position="relative"
@@ -603,6 +651,7 @@ const AnnotationPage = () => {
                   onMouseMove={handleCanvasMouseMove}
                   onMouseUp={handleCanvasMouseUp}
                   onMouseLeave={handleCanvasMouseLeave}
+                  onDoubleClick={handleDoubleClick}
                 >
                   {/* Base image */}
                   <ImageWithAuth
@@ -618,7 +667,86 @@ const AnnotationPage = () => {
                   />
 
                   {/* Saved annotations */}
+                  <svg
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      pointerEvents: 'none',
+                      zIndex: 10,
+                    }}
+                  >
+                    {currentAnnotations.map((ann) => {
+                      const color = getColor(ann.labelId);
+                      const isSelected = selectedBoxId === ann.id;
+                      
+                      if (ann.type === 'POLYGON' && ann.points) {
+                        const pointsStr = ann.points.map(p => `${p.x},${p.y}`).join(' ');
+                        return (
+                          <g key={ann.id} style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+                             onMouseDown={(e) => { e.stopPropagation(); setSelectedBoxId(ann.id); }}
+                             onContextMenu={(e) => { e.preventDefault(); handleDeleteAnnotation(ann.id); }}>
+                            <polygon
+                              points={pointsStr}
+                              style={{
+                                fill: color,
+                                fillOpacity: isSelected ? 0.3 : 0.15,
+                                stroke: color,
+                                strokeWidth: isSelected ? 0.8 : 0.4,
+                              }}
+                            />
+                            <foreignObject
+                                x={Math.min(...ann.points.map(p => p.x))}
+                                y={Math.min(...ann.points.map(p => p.y))}
+                                width="30"
+                                height="10"
+                                style={{ overflow: 'visible' }}
+                            >
+                              <div style={{
+                                backgroundColor: color,
+                                color: 'white',
+                                fontSize: '2px',
+                                padding: '0 1px',
+                                borderRadius: '0.5px',
+                                display: 'inline-block',
+                                whiteSpace: 'nowrap',
+                                transform: 'translateY(-110%)'
+                              }}>
+                                {labels.find(l => l.id === ann.labelId)?.name}
+                              </div>
+                            </foreignObject>
+                          </g>
+                        );
+                      }
+                      return null;
+                    })}
+
+                    {/* Drawing polygon live preview */}
+                    {tool === 'POLYGON' && activePoints.length > 0 && (
+                      <g>
+                        <polyline
+                          points={activePoints.map(p => `${p.x},${p.y}`).join(' ')}
+                          style={{ fill: 'none', stroke: selectedLabel?.color || '#000', strokeWidth: 0.5, strokeDasharray: '1' }}
+                        />
+                        {mousePos && (
+                          <line
+                            x1={activePoints[activePoints.length - 1].x}
+                            y1={activePoints[activePoints.length - 1].y}
+                            x2={mousePos.x}
+                            y2={mousePos.y}
+                            style={{ stroke: selectedLabel?.color || '#000', strokeWidth: 0.4, strokeDasharray: '1' }}
+                          />
+                        )}
+                      </g>
+                    )}
+                  </svg>
+
                   {currentAnnotations.map((ann) => {
+                    if (ann.type === 'POLYGON') return null; // Handled by SVG above
                     const color = getColor(ann.labelId);
                     const isSelected = selectedBoxId === ann.id;
                     return (
@@ -638,6 +766,7 @@ const AnnotationPage = () => {
                           cursor: 'move',
                           pointerEvents: 'auto',
                           boxSizing: 'border-box',
+                          zIndex: 11,
                           '&:hover': {
                             border: `3px solid ${color}`,
                             outline: `2px solid rgba(255,255,255,0.45)`,
@@ -706,7 +835,7 @@ const AnnotationPage = () => {
                   })}
 
                   {/* Live preview box while drawing */}
-                  {previewBox && selectedLabel && (
+                  {previewBox && selectedLabel && tool === 'BOX' && (
                     <Box
                       sx={{
                         position: 'absolute',
@@ -716,15 +845,16 @@ const AnnotationPage = () => {
                         height: `${previewBox.h}%`,
                         border: `2px dashed ${selectedLabel.color}`,
                         pointerEvents: 'none',
+                        zIndex: 20,
                       }}
                     />
                   )}
                 </Box>
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                Chọn ảnh từ danh sách bên trái
-              </Typography>
-            )}
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Chọn ảnh từ danh sách bên trái
+                </Typography>
+              )}
             </Box>
           </Paper>
         </Box>
@@ -738,28 +868,28 @@ const AnnotationPage = () => {
             Vui lòng chọn loại lỗi và để lại ghi chú cho Annotator biết nguyên nhân task bị từ chối.
           </Typography>
           <TextField
-             select
-             label="Loại lỗi (Bắt buộc)"
-             fullWidth
-             value={errorCategory}
-             onChange={(e) => {
-               setErrorCategory(e.target.value);
-               setSubmitError(null);
-             }}
-             sx={{ mb: 2 }}
+            select
+            label="Loại lỗi (Bắt buộc)"
+            fullWidth
+            value={errorCategory}
+            onChange={(e) => {
+              setErrorCategory(e.target.value);
+              setSubmitError(null);
+            }}
+            sx={{ mb: 2 }}
           >
-             <MenuItem value="Vẽ thiếu (Missing box)">Vẽ thiếu (Missing box)</MenuItem>
-             <MenuItem value="Vẽ lệch/Rộng/Hẹp quá">Vẽ lệch/Rộng/Hẹp quá</MenuItem>
-             <MenuItem value="Gán sai nhãn (Wrong label)">Gán sai nhãn (Wrong label)</MenuItem>
-             <MenuItem value="Lỗi khác">Lỗi khác</MenuItem>
+            <MenuItem value="Vẽ thiếu (Missing box)">Vẽ thiếu (Missing box)</MenuItem>
+            <MenuItem value="Vẽ lệch/Rộng/Hẹp quá">Vẽ lệch/Rộng/Hẹp quá</MenuItem>
+            <MenuItem value="Gán sai nhãn (Wrong label)">Gán sai nhãn (Wrong label)</MenuItem>
+            <MenuItem value="Lỗi khác">Lỗi khác</MenuItem>
           </TextField>
           <TextField
-             label="Ghi chú chi tiết (Tùy chọn)"
-             fullWidth
-             multiline
-             rows={3}
-             value={rejectionNote}
-             onChange={(e) => setRejectionNote(e.target.value)}
+            label="Ghi chú chi tiết (Tùy chọn)"
+            fullWidth
+            multiline
+            rows={3}
+            value={rejectionNote}
+            onChange={(e) => setRejectionNote(e.target.value)}
           />
         </DialogContent>
         <DialogActions>

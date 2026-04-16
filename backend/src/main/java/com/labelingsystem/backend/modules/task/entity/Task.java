@@ -9,9 +9,11 @@ import java.util.HashSet;
 import java.util.Set;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "tasks")
+@SQLRestriction("deleted = false")
 @Getter
 @Setter
 @NoArgsConstructor

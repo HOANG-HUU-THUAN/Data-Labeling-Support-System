@@ -11,9 +11,9 @@ import java.util.List;
 @Repository
 public interface ImageRepository extends JpaRepository<Image, Long> {
     
-    @Query("SELECT i FROM Image i WHERE i.dataset.id = :datasetId AND i.status = :status AND i.deleted = false " +
-           "AND i.id NOT IN (SELECT ti.id FROM Task t JOIN t.images ti WHERE t.project.id = :projectId AND t.deleted = false)")
+    @Query("SELECT i FROM Image i WHERE i.dataset.id = :datasetId AND i.status = :status " +
+           "AND i.id NOT IN (SELECT ti.id FROM Task t JOIN t.images ti WHERE t.project.id = :projectId)")
     List<Image> findUnassignedImages(@Param("projectId") Long projectId, @Param("datasetId") Long datasetId, @Param("status") String status);
     
-    List<Image> findByDatasetIdAndDeletedFalse(Long datasetId);
+    List<Image> findByDatasetId(Long datasetId);
 }

@@ -16,6 +16,7 @@ public class TaskResponse {
     Long projectId;
     List<Long> datasetIds;
     Long assigneeId;
+    Long reviewerId;
     String status;
     Double progress;
     LocalDateTime createdAt;

@@ -10,11 +10,11 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
     @EntityGraph(attributePaths = {"project", "assignedAnnotator", "assignedReviewer", "images"})
-    List<Task> findByAssignedAnnotatorIdAndDeletedFalseAndStatusInOrderByCreatedAtDesc(Long annotatorId, List<String> statuses);
+    List<Task> findByAssignedAnnotatorIdAndStatusInOrderByCreatedAtDesc(Long annotatorId, List<String> statuses);
 
     @EntityGraph(attributePaths = {"project", "assignedAnnotator", "assignedReviewer", "images"})
-    List<Task> findByAssignedReviewerIdAndDeletedFalseAndStatusInOrderByCreatedAtDesc(Long reviewerId, List<String> statuses);
+    List<Task> findByAssignedReviewerIdAndStatusInOrderByCreatedAtDesc(Long reviewerId, List<String> statuses);
 
     @EntityGraph(attributePaths = {"project", "assignedAnnotator", "assignedReviewer", "images", "images.dataset"})
-    Optional<Task> findByIdAndDeletedFalse(Long id);
+    Optional<Task> findById(Long id);
 }

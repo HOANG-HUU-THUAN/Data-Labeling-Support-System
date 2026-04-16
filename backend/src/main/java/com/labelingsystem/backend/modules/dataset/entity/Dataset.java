@@ -5,9 +5,11 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "datasets")
+@SQLRestriction("deleted = false")
 @Getter
 @Setter
 @NoArgsConstructor

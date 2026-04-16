@@ -2,9 +2,11 @@ package com.labelingsystem.backend.modules.project.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "labels")
+@SQLRestriction("deleted = false")
 @Getter
 @Setter
 @NoArgsConstructor

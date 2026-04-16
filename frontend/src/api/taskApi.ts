@@ -37,7 +37,7 @@ export const deleteTask = async (id: number): Promise<void> => {
 
 export const updateTask = async (
   id: number,
-  data: { name: string; datasetIds: number[]; assigneeId?: number }
+  data: { name: string; datasetIds: number[]; assigneeId?: number; reviewerId?: number }
 ): Promise<Task> => {
   const response = await axiosInstance.put(`/v1/tasks/${id}`, data);
   return response.data.data;

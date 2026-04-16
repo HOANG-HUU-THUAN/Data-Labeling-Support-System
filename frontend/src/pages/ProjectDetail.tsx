@@ -127,8 +127,18 @@ export default function ProjectDetail() {
         <Typography mb={2}>{project.name}</Typography>
         <Divider sx={{ mb: 2 }} />
 
+        <Typography variant="overline" color="text.secondary">Loại dự án</Typography>
+        <Typography mb={2}>
+          {project.type === 'IMAGE_CLASSIFICATION' ? 'Phân loại ảnh' : 'Nhận diện đối tượng'}
+        </Typography>
+        <Divider sx={{ mb: 2 }} />
+
         <Typography variant="overline" color="text.secondary">Mô tả</Typography>
-        <Typography>{project.description}</Typography>
+        <Typography mb={2}>{project.description}</Typography>
+        <Divider sx={{ mb: 2 }} />
+
+        <Typography variant="overline" color="text.secondary">Hướng dẫn (Guideline)</Typography>
+        <Typography sx={{ whiteSpace: 'pre-wrap' }}>{project.guideline || 'Chưa có hướng dẫn'}</Typography>
       </Paper>
 
       {/* LABEL LIST */}

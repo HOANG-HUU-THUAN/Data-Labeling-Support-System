@@ -1,3 +1,8 @@
+export interface PointDTO {
+  x: number;
+  y: number;
+}
+
 export interface Annotation {
   id: number;
   imageId: number;
@@ -6,4 +11,6 @@ export interface Annotation {
   y: number;
   w: number;
   h: number;
+  type: 'BOX' | 'POLYGON';
+  points?: PointDTO[];
 }

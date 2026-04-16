@@ -30,7 +30,7 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional
     public ReviewResponse submitReview(ReviewRequest request, Long reviewerId, boolean isAdmin) {
-        Task task = taskRepository.findByIdAndDeletedFalse(request.getTaskId())
+        Task task = taskRepository.findById(request.getTaskId())
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + request.getTaskId()));
 
         User reviewer = userRepository.findById(reviewerId)

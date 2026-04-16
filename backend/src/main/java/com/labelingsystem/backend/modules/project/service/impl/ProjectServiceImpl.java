@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -82,16 +84,35 @@ public class ProjectServiceImpl implements ProjectService {
 
         projectMapper.updateProjectFromDTO(request, project);
 
-        // Update Labels (Full overwrite)
+        // Update Labels (Surgical update to avoid FK violations)
         if (request.getLabels() != null) {
-            project.getLabels().clear(); 
+            Map<Long, ProjectUpdateRequest.LabelUpdateRequest> incomingLabels = request.getLabels().stream()
+                    .filter(l -> l.getId() != null)
+                    .collect(Collectors.toMap(ProjectUpdateRequest.LabelUpdateRequest::getId, l -> l));
 
+            // Mark removed labels as deleted
+            Set<Long> incomingIds = incomingLabels.keySet();
+            for (Label existingLabel : project.getLabels()) {
+                if (!incomingIds.contains(existingLabel.getId())) {
+                    existingLabel.setDeleted(true);
+                } else {
+                    // Update existing
+                    ProjectUpdateRequest.LabelUpdateRequest req = incomingLabels.get(existingLabel.getId());
+                    existingLabel.setName(req.getName());
+                    existingLabel.setColor(req.getColor());
+                    existingLabel.setDeleted(false); // Ensure it's not marked deleted if it's in the request
+                }
+            }
+
+            // Add new labels
             for (ProjectUpdateRequest.LabelUpdateRequest labelReq : request.getLabels()) {
-                Label newLabel = new Label();
-                newLabel.setName(labelReq.getName());
-                newLabel.setColor(labelReq.getColor());
-                newLabel.setProject(project);
-                project.getLabels().add(newLabel);
+                if (labelReq.getId() == null) {
+                    Label newLabel = new Label();
+                    newLabel.setName(labelReq.getName());
+                    newLabel.setColor(labelReq.getColor());
+                    newLabel.setProject(project);
+                    project.getLabels().add(newLabel);
+                }
             }
         }
 

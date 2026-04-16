@@ -12,7 +12,7 @@ export const getProjectById = async (id: number): Promise<Project | undefined> =
 };
 
 export const createProject = async (
-  data: Pick<Project, 'name' | 'description'>
+  data: Omit<Project, 'id'>
 ): Promise<Project> => {
   const response = await axiosInstance.post('/projects', data);
   return response.data.data;
@@ -20,7 +20,7 @@ export const createProject = async (
 
 export const updateProject = async (
   id: number,
-  data: Pick<Project, 'name' | 'description'>
+  data: Omit<Project, 'id'>
 ): Promise<Project> => {
   const response = await axiosInstance.put(`/projects/${id}`, data);
   return response.data.data;

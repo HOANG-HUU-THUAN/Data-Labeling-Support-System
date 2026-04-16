@@ -9,6 +9,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "reviews")
+@org.hibernate.annotations.SQLRestriction("deleted = false")
 @Getter
 @Setter
 @NoArgsConstructor

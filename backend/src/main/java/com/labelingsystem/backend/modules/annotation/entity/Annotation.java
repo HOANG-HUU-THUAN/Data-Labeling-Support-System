@@ -14,6 +14,7 @@ import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "annotations")
+@org.hibernate.annotations.SQLRestriction("deleted = false")
 @Getter
 @Setter
 @NoArgsConstructor

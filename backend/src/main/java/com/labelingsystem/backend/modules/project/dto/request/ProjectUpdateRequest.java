@@ -21,6 +21,8 @@ public class ProjectUpdateRequest {
 
     @Data
     public static class LabelUpdateRequest {
+        private Long id;
+
         @NotBlank(message = "Tên nhãn không được để trống")
         private String name;
 

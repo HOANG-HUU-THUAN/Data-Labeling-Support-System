@@ -49,7 +49,6 @@ public class TaskServiceImpl implements TaskService {
     @Transactional(readOnly = true)
     public List<TaskResponse> getAllTasks() {
         return taskRepository.findAll().stream()
-                .filter(t -> !t.isDeleted())
                 .map(this::mapToTaskResponse)
                 .collect(Collectors.toList());
     }
@@ -57,7 +56,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional(readOnly = true)
     public TaskResponse getTaskById(Long id) {
-        Task task = taskRepository.findByIdAndDeletedFalse(id)
+        Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
         return mapToTaskResponse(task);
     }
@@ -65,13 +64,19 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional
     public TaskResponse updateTask(Long id, TaskUpdateRequest request) {
-        Task task = taskRepository.findByIdAndDeletedFalse(id)
+        Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
         
         if (request.getAssigneeId() != null) {
             User user = userRepository.findById(request.getAssigneeId())
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
             task.setAssignedAnnotator(user);
+        }
+
+        if (request.getReviewerId() != null) {
+            User user = userRepository.findById(request.getReviewerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+            task.setAssignedReviewer(user);
         }
         
         return mapToTaskResponse(taskRepository.save(task));
@@ -80,7 +85,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional
     public TaskResponse assignTask(Long id, Long assigneeId) {
-        Task task = taskRepository.findByIdAndDeletedFalse(id)
+        Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
         
         if (assigneeId != null) {
@@ -97,7 +102,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional
     public TaskResponse updateTaskStatus(Long id, String status) {
-        Task task = taskRepository.findByIdAndDeletedFalse(id)
+        Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
         task.setStatus(status);
         return mapToTaskResponse(taskRepository.save(task));
@@ -106,7 +111,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional
     public void deleteTask(Long id) {
-        Task task = taskRepository.findByIdAndDeletedFalse(id)
+        Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
         task.setDeleted(true);
         taskRepository.save(task);
@@ -126,6 +131,7 @@ public class TaskServiceImpl implements TaskService {
                 .projectId(task.getProject().getId())
                 .datasetIds(datasetIds)
                 .assigneeId(task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getId() : null)
+                .reviewerId(task.getAssignedReviewer() != null ? task.getAssignedReviewer().getId() : null)
                 .status(task.getStatus())
                 .progress(progress)
                 .createdAt(task.getCreatedAt())
@@ -138,7 +144,7 @@ public class TaskServiceImpl implements TaskService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found with id " + projectId));
 
-        Dataset dataset = datasetRepository.findByIdAndDeletedFalse(request.getDatasetId())
+        Dataset dataset = datasetRepository.findById(request.getDatasetId())
                 .orElseThrow(() -> new ResourceNotFoundException("Dataset not found with id " + request.getDatasetId()));
 
         if (!dataset.getProject().getId().equals(projectId)) {
@@ -197,7 +203,7 @@ public class TaskServiceImpl implements TaskService {
         List<String> allowedStatuses = List.of("PENDING", "IN_PROGRESS", "REJECTED");
 
         return taskRepository
-                .findByAssignedAnnotatorIdAndDeletedFalseAndStatusInOrderByCreatedAtDesc(annotatorId, allowedStatuses)
+                .findByAssignedAnnotatorIdAndStatusInOrderByCreatedAtDesc(annotatorId, allowedStatuses)
                 .stream()
                 .map(task -> MyTaskResponse.builder()
                         .taskId(task.getId())
@@ -217,7 +223,7 @@ public class TaskServiceImpl implements TaskService {
         List<String> allowedStatuses = List.of("IN_REVIEW");
 
         return taskRepository
-                .findByAssignedReviewerIdAndDeletedFalseAndStatusInOrderByCreatedAtDesc(reviewerId, allowedStatuses)
+                .findByAssignedReviewerIdAndStatusInOrderByCreatedAtDesc(reviewerId, allowedStatuses)
                 .stream()
                 .map(task -> MyTaskResponse.builder()
                         .taskId(task.getId())
@@ -240,7 +246,7 @@ public class TaskServiceImpl implements TaskService {
             boolean isAdmin,
             boolean isReviewer,
             HttpServletRequest request) {
-        Task task = taskRepository.findByIdAndDeletedFalse(taskId)
+        Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + taskId));
 
         boolean canAccess = isAdmin;
@@ -256,7 +262,6 @@ public class TaskServiceImpl implements TaskService {
         }
 
         return task.getImages().stream()
-                .filter(image -> !image.isDeleted())
                 .sorted(Comparator.comparing(Image::getId))
                 .map(image -> mapTaskImageResponse(image, request))
                 .toList();
@@ -285,7 +290,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional
     public TaskSubmitResponse submitTask(Long taskId, Long userId, boolean isAdmin) {
-        Task task = taskRepository.findByIdAndDeletedFalse(taskId)
+        Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + taskId));
 
         if (!isAdmin) {

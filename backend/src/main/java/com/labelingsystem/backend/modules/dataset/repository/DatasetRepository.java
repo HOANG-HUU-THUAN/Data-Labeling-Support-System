@@ -8,5 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface DatasetRepository extends JpaRepository<Dataset, Long> {
-    Optional<Dataset> findByIdAndDeletedFalse(Long id);
+    Optional<Dataset> findById(Long id);
 }

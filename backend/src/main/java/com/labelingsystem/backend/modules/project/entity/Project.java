@@ -8,11 +8,13 @@ import java.util.List;
 
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 import com.labelingsystem.backend.common.enums.ProjectStatus;
 
 @Entity
 @Table(name = "projects")
+@SQLRestriction("deleted = false")
 @Getter
 @Setter
 @NoArgsConstructor

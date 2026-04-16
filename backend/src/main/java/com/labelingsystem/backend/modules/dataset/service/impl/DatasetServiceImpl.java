@@ -36,7 +36,7 @@ public class DatasetServiceImpl implements DatasetService {
     @Transactional(readOnly = true)
     public List<DatasetResponse> getDatasetsByProjectId(Long projectId) {
         return datasetRepository.findAll().stream()
-                .filter(d -> d.getProject().getId().equals(projectId) && !d.isDeleted())
+                .filter(d -> d.getProject().getId().equals(projectId))
                 .map(this::mapToDatasetResponse)
                 .collect(Collectors.toList());
     }
@@ -45,7 +45,6 @@ public class DatasetServiceImpl implements DatasetService {
     @Transactional(readOnly = true)
     public List<DatasetResponse> getDatasetsByIds(List<Long> ids) {
         return datasetRepository.findAllById(ids).stream()
-                .filter(d -> !d.isDeleted())
                 .map(this::mapToDatasetResponse)
                 .collect(Collectors.toList());
     }
@@ -53,19 +52,19 @@ public class DatasetServiceImpl implements DatasetService {
     @Override
     @Transactional
     public void deleteDataset(Long id) {
-        Dataset dataset = datasetRepository.findByIdAndDeletedFalse(id)
+        Dataset dataset = datasetRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Dataset not found with id " + id));
         dataset.setDeleted(true);
         datasetRepository.save(dataset);
         
         // Mark images as deleted too
-        List<Image> images = imageRepository.findByDatasetIdAndDeletedFalse(id);
+        List<Image> images = imageRepository.findByDatasetId(id);
         images.forEach(i -> i.setDeleted(true));
         imageRepository.saveAll(images);
     }
 
     private DatasetResponse mapToDatasetResponse(Dataset dataset) {
-        int imageCount = imageRepository.findByDatasetIdAndDeletedFalse(dataset.getId()).size();
+        int imageCount = imageRepository.findByDatasetId(dataset.getId()).size();
         return DatasetResponse.builder()
                 .id(dataset.getId())
                 .name(dataset.getName())

@@ -5,6 +5,7 @@ export interface Task {
   datasetIds: number[];
   status: TaskStatus;
   assigneeId?: number;
+  reviewerId?: number;
 }
 
 export interface MyTask {

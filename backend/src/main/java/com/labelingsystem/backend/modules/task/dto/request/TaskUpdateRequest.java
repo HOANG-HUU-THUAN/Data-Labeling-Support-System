@@ -12,4 +12,5 @@ public class TaskUpdateRequest {
     String name;
     List<Long> datasetIds;
     Long assigneeId;
+    Long reviewerId;
 }

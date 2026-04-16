@@ -20,14 +20,10 @@ import {
 import { getProjects } from '../api/projectApi';
 import { getDatasetsByProject } from '../api/datasetApi';
 import { createBatchTasks, getTaskById, updateTask } from '../api/taskApi';
+import { getUsersByRole } from '../api/userApi';
+import type { User as ApiUser } from '../api/userApi';
 import type { Project } from '../types/project';
 import type { Dataset } from '../types/dataset';
-
-// Annotators from mock (static list derived from authMock)
-const ANNOTATORS = [
-  { id: 3, name: 'Annotator 1' },
-  { id: 4, name: 'Annotator 2' },
-];
 
 const TaskFormPage = () => {
   const navigate = useNavigate();
@@ -41,21 +37,26 @@ const TaskFormPage = () => {
   const [datasetId, setDatasetId] = useState<number | ''>('');
   const [imagesPerTask, setImagesPerTask] = useState<number>(10);
   const [annotatorIds, setAnnotatorIds] = useState<number[]>([]);
+  const [reviewerIds, setReviewerIds] = useState<number[]>([]);
   
   // Edit mode only states
   const [name, setName] = useState('');
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [annotators, setAnnotators] = useState<ApiUser[]>([]);
+  const [reviewers, setReviewers] = useState<ApiUser[]>([]);
   const [loadingDatasets, setLoadingDatasets] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Validation errors
   const [errors, setErrors] = useState<any>({});
 
-  // Load projects once
+  // Load projects, annotators, and reviewers once
   useEffect(() => {
     getProjects().then(setProjects);
+    getUsersByRole('ANNOTATOR').then(setAnnotators);
+    getUsersByRole('REVIEWER').then(setReviewers);
   }, []);
 
   useEffect(() => {
@@ -66,6 +67,7 @@ const TaskFormPage = () => {
       setName(task.name);
       setProjectId(task.projectId);
       setAnnotatorIds(task.assigneeId ? [task.assigneeId] : []);
+      setReviewerIds(task.reviewerId ? [task.reviewerId] : []);
       // Load datasets for the project, then restore checked ids
       getDatasetsByProject(task.projectId).then((all) => {
         if (cancelled) return;
@@ -108,9 +110,10 @@ const TaskFormPage = () => {
         datasetId: datasetId === '',
         imagesPerTask: imagesPerTask < 1,
         annotatorIds: annotatorIds.length === 0,
+        reviewerIds: reviewerIds.length === 0,
       };
       setErrors(e);
-      return !e.projectId && !e.datasetId && !e.imagesPerTask && !e.annotatorIds;
+      return !e.projectId && !e.datasetId && !e.imagesPerTask && !e.annotatorIds && !e.reviewerIds;
     }
   };
 
@@ -123,12 +126,14 @@ const TaskFormPage = () => {
           name: name.trim(),
           datasetIds: datasetId !== '' ? [datasetId as number] : [],
           assigneeId: annotatorIds.length > 0 ? annotatorIds[0] : undefined,
+          reviewerId: reviewerIds.length > 0 ? reviewerIds[0] : undefined,
         });
       } else {
         await createBatchTasks(projectId as number, {
           datasetId: datasetId as number,
           imagesPerTask,
           annotatorIds,
+          reviewerIds,
         });
       }
       navigate('/tasks');
@@ -239,27 +244,68 @@ const TaskFormPage = () => {
               renderValue={(selected) => {
                 if (isEdit) {
                   const s = selected as number;
-                  return ANNOTATORS.find((a) => a.id === s)?.name || s;
+                  return annotators.find((a) => a.id === s)?.username || s;
                 }
                 const selArr = selected as number[];
                 return (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                     {selArr.map((value) => {
-                      const annotator = ANNOTATORS.find((a) => a.id === value);
-                      return <Chip key={value} label={annotator?.name || value} size="small" />;
+                      const annotator = annotators.find((a) => a.id === value);
+                      return <Chip key={value} label={annotator?.username || value} size="small" />;
                     })}
                   </Box>
                 );
               }}
             >
                {isEdit && <MenuItem value="">— Không gán —</MenuItem>}
-              {ANNOTATORS.map((u) => (
+              {annotators.map((u) => (
                 <MenuItem key={u.id} value={u.id}>
-                  {u.name}
+                  {u.username} ({u.email})
                 </MenuItem>
               ))}
             </Select>
             {errors.annotatorIds && <FormHelperText>Vui lòng chọn ít nhất 1 annotator</FormHelperText>}
+          </FormControl>
+
+          {/* REVIEWERS */}
+          <FormControl fullWidth size="small" error={!!errors.reviewerIds}>
+            <InputLabel>Reviewers (Người duyệt)</InputLabel>
+            <Select
+              multiple={!isEdit}
+              value={isEdit ? (reviewerIds.length > 0 ? reviewerIds[0] : '') : reviewerIds}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (isEdit) {
+                  setReviewerIds(val === '' ? [] : [val as number]);
+                } else {
+                  setReviewerIds(typeof val === 'string' ? val.split(',').map(Number) : val as number[]);
+                }
+              }}
+              input={<OutlinedInput label="Reviewers (Người duyệt)" />}
+              renderValue={(selected) => {
+                if (isEdit) {
+                  const s = selected as number;
+                  return reviewers.find((a) => a.id === s)?.username || s;
+                }
+                const selArr = selected as number[];
+                return (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selArr.map((value) => {
+                      const reviewer = reviewers.find((a) => a.id === value);
+                      return <Chip key={value} label={reviewer?.username || value} size="small" />;
+                    })}
+                  </Box>
+                );
+              }}
+            >
+               {isEdit && <MenuItem value="">— Không gán —</MenuItem>}
+              {reviewers.map((u) => (
+                <MenuItem key={u.id} value={u.id}>
+                  {u.username} ({u.email})
+                </MenuItem>
+              ))}
+            </Select>
+            {errors.reviewerIds && <FormHelperText>Vui lòng chọn ít nhất 1 reviewer</FormHelperText>}
           </FormControl>
 
           {/* ACTIONS */}

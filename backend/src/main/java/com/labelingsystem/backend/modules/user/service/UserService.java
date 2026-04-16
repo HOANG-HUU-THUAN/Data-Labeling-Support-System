@@ -5,6 +5,8 @@ import com.labelingsystem.backend.modules.user.dto.request.UserCreationDTO;
 import com.labelingsystem.backend.modules.user.dto.request.UserUpdateDTO;
 import com.labelingsystem.backend.modules.user.dto.response.UserResponseDTO;
 
+import java.util.List;
+
 public interface UserService {
     UserResponseDTO createUser(UserCreationDTO request);
 
@@ -19,4 +21,6 @@ public interface UserService {
     void lockUser(Long id);
 
     void unlockUser(Long id);
+
+    List<UserResponseDTO> getUsersByRole(String roleName);
 }

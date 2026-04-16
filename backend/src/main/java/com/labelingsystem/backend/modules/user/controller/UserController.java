@@ -71,4 +71,9 @@ public class UserController {
         userService.unlockUser(id);
         return ApiResponse.success("User unlocked successfully.");
     }
+
+    @GetMapping("/roles/{roleName}")
+    public ApiResponse<java.util.List<UserResponseDTO>> getUsersByRole(@PathVariable String roleName) {
+        return ApiResponse.success(userService.getUsersByRole(roleName));
+    }
 }

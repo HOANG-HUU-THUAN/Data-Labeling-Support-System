@@ -15,6 +15,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@org.hibernate.annotations.SQLRestriction("deleted = false")
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

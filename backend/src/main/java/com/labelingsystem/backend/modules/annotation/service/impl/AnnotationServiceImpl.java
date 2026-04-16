@@ -41,7 +41,7 @@ public class AnnotationServiceImpl implements AnnotationService {
 
     @Override
     public List<AnnotationResponse> getAnnotationsByImage(Long imageId) {
-        return annotationRepository.findByImageIdAndDeletedFalse(imageId).stream()
+        return annotationRepository.findByImageId(imageId).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -55,7 +55,7 @@ public class AnnotationServiceImpl implements AnnotationService {
         Long taskId = request.getTaskId();
         if (taskId == null) {
             List<Task> tasks = taskRepository.findAll().stream()
-                    .filter(t -> t.getImages().contains(image) && !t.isDeleted())
+                    .filter(t -> t.getImages().contains(image))
                     .collect(Collectors.toList());
             if (tasks.isEmpty()) {
                 throw new ResourceNotFoundException("No task found for this image");
@@ -115,7 +115,7 @@ public class AnnotationServiceImpl implements AnnotationService {
     @Override
     @Transactional
     public void replaceAnnotationsForImage(Long imageId, List<AnnotationRequest> replacements) {
-        List<Annotation> existing = annotationRepository.findByImageIdAndDeletedFalse(imageId);
+        List<Annotation> existing = annotationRepository.findByImageId(imageId);
         existing.forEach(a -> a.setDeleted(true));
         annotationRepository.saveAll(existing);
 

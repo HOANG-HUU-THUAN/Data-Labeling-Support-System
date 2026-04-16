@@ -11,8 +11,8 @@ import org.springframework.data.repository.query.Param;
 
 @Repository
 public interface AnnotationRepository extends JpaRepository<Annotation, Long> {
-    List<Annotation> findByImageIdAndDeletedFalse(Long imageId);
+    List<Annotation> findByImageId(Long imageId);
     
-    @Query("SELECT COUNT(DISTINCT a.image.id) FROM Annotation a WHERE a.task.id = :taskId AND a.deleted = false")
+    @Query("SELECT COUNT(DISTINCT a.image.id) FROM Annotation a WHERE a.task.id = :taskId")
     long countAnnotatedImages(@Param("taskId") Long taskId);
 }

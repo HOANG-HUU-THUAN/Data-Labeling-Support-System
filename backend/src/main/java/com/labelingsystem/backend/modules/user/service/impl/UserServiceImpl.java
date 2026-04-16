@@ -138,4 +138,11 @@ public class UserServiceImpl implements UserService {
         user.setStatus("ACTIVE");
         userRepository.save(user);
     }
+
+    @Override
+    public List<UserResponseDTO> getUsersByRole(String roleName) {
+        return userRepository.findByRoles_Name(roleName).stream()
+                .map(userMapper::toUserResponseDTO)
+                .collect(Collectors.toList());
+    }
 }

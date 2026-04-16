@@ -69,6 +69,7 @@ export default function ProjectList() {
               <TableRow sx={{ backgroundColor: 'grey.100' }}>
                 <TableCell width={60}><strong>ID</strong></TableCell>
                 <TableCell><strong>Tên dự án</strong></TableCell>
+                <TableCell><strong>Loại dự án</strong></TableCell>
                 <TableCell><strong>Mô tả</strong></TableCell>
                 <TableCell width={200} align="center"><strong>Hành động</strong></TableCell>
               </TableRow>
@@ -78,6 +79,9 @@ export default function ProjectList() {
                 <TableRow key={p.id} hover>
                   <TableCell>{p.id}</TableCell>
                   <TableCell>{p.name}</TableCell>
+                  <TableCell>
+                    {p.type === 'IMAGE_CLASSIFICATION' ? 'Phân loại ảnh' : 'Nhận diện đối tượng'}
+                  </TableCell>
                   <TableCell>{p.description}</TableCell>
                   <TableCell align="center">
                     <Stack direction="row" spacing={1} justifyContent="center">
