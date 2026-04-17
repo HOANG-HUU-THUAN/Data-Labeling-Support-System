@@ -1,5 +1,5 @@
 import axiosInstance from './axios';
-import type { Dataset } from '../types/dataset';
+import type { Dataset, DatasetImage } from '../types/dataset';
 
 export const getDatasetsByProject = async (projectId: number): Promise<Dataset[]> => {
   // It seems we need a GET route.
@@ -18,9 +18,9 @@ export const deleteDataset = async (id: number): Promise<void> => {
   await axiosInstance.delete(`/v1/datasets/${id}`);
 };
 
-export const uploadDataset = async (projectId: number, files: File[]): Promise<Dataset[]> => {
+export const uploadDataset = async (projectId: number, files: File[], name: string): Promise<string> => {
   const formData = new FormData();
-  formData.append('name', `Batch ${new Date().getTime()}`);
+  formData.append('name', name);
   files.forEach(file => {
     formData.append('images', file);
   });
@@ -30,5 +30,10 @@ export const uploadDataset = async (projectId: number, files: File[]): Promise<D
     formData,
     { headers: { 'Content-Type': 'multipart/form-data' } }
   );
+  return response.data.data;
+};
+
+export const getImagesByDatasetId = async (datasetId: number): Promise<DatasetImage[]> => {
+  const response = await axiosInstance.get(`/v1/datasets/${datasetId}/images`);
   return response.data.data;
 };

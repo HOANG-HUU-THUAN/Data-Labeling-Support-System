@@ -20,10 +20,21 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { assignTask, deleteTask, getTaskById, updateTaskStatus } from '../api/taskApi';
-import { getDatasetsByProject } from '../api/datasetApi';
+import { getImagesByDatasetId } from '../api/datasetApi';
 import type { Task, TaskStatus } from '../types/task';
-import type { Dataset } from '../types/dataset';
+import type { DatasetImage } from '../types/dataset';
+import ImageWithAuth from '../components/ImageWithAuth';
+
+const formatImageUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  // Backend returns /api/v1/... but axiosInstance baseURL is .../api
+  // Strip /api to avoid duplication
+  return url.replace(/^\/api/, '');
+};
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
   PENDING: 'Chưa làm',
@@ -60,11 +71,12 @@ const TaskDetailPage = () => {
   const navigate = useNavigate();
 
   const [task, setTask] = useState<Task | null | undefined>(undefined);
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
-  const [loadingDatasets, setLoadingDatasets] = useState(false);
+  const [taskImages, setTaskImages] = useState<DatasetImage[]>([]);
+  const [loadingImages, setLoadingImages] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showImages, setShowImages] = useState(false);
 
   const handleStatusChange = (newStatus: TaskStatus) => {
     if (!task || newStatus === task.status) return;
@@ -101,12 +113,17 @@ const TaskDetailPage = () => {
       const found = t ?? null;
       setTask(found);
       if (found && found.datasetIds.length > 0) {
-        setLoadingDatasets(true);
-        getDatasetsByProject(found.projectId).then((all) => {
-          if (cancelled) return;
-          setDatasets(all.filter((d) => found.datasetIds.includes(d.id)));
-          setLoadingDatasets(false);
-        });
+        setLoadingImages(true);
+        Promise.all(found.datasetIds.map(id => getImagesByDatasetId(id)))
+          .then((results) => {
+            if (cancelled) return;
+            setTaskImages(results.flat());
+            setLoadingImages(false);
+          })
+          .catch(() => {
+            if (cancelled) return;
+            setLoadingImages(false);
+          });
       }
     });
     return () => { cancelled = true; };
@@ -176,9 +193,15 @@ const TaskDetailPage = () => {
             <Typography variant="body1">{task.projectId}</Typography>
           </InfoRow>
 
-          <InfoRow label="Người được gán">
+          <InfoRow label="Annotator">
             <Typography variant="body1">
-              {task.assigneeId ? `User #${task.assigneeId}` : '—'}
+              {task.assigneeUsername || (task.assigneeId ? `User #${task.assigneeId}` : '—')}
+            </Typography>
+          </InfoRow>
+
+          <InfoRow label="Reviewer">
+            <Typography variant="body1">
+              {task.reviewerUsername || (task.reviewerId ? `User #${task.reviewerId}` : '—')}
             </Typography>
           </InfoRow>
 
@@ -189,6 +212,14 @@ const TaskDetailPage = () => {
               size="small"
             />
           </InfoRow>
+          
+          {task.status === 'REJECTED' && (
+            <Box sx={{ bgcolor: 'error.light', p: 2, borderRadius: 1, color: 'error.contrastText' }}>
+              <Typography variant="subtitle2" fontWeight="bold">Lý do từ chối:</Typography>
+              <Typography variant="body2">Loại lỗi: <strong>{task.errorCategory || '—'}</strong></Typography>
+              <Typography variant="body2">Ghi chú: {task.comment || '—'}</Typography>
+            </Box>
+          )}
 
           <Divider />
 
@@ -237,44 +268,51 @@ const TaskDetailPage = () => {
 
           <Divider />
 
-          {/* DATASET PREVIEW */}
           <Box>
-            <Typography variant="body2" color="text.secondary" mb={1}>
-              Dataset ({task.datasetIds.length} ảnh)
-            </Typography>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+              <Typography variant="body2" color="text.secondary">
+                Ảnh từ dataset ({taskImages.length} ảnh)
+              </Typography>
+              <Button
+                size="small"
+                onClick={() => setShowImages(!showImages)}
+                startIcon={showImages ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              >
+                {showImages ? 'Ẩn ảnh' : 'Hiện ảnh'}
+              </Button>
+            </Stack>
 
-            {loadingDatasets ? (
-              <CircularProgress size={20} />
-            ) : task.datasetIds.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                Không có dataset nào
-              </Typography>
-            ) : datasets.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                Không tải được dataset
-              </Typography>
-            ) : (
-              <ImageList cols={4} gap={8}>
-                {datasets.map((ds) => (
-                  <ImageListItem key={ds.id}>
-                    <Box
-                      component="img"
-                      src={ds.url}
-                      alt={ds.name}
-                      sx={{
-                        height: 120,
-                        width: '100%',
-                        objectFit: 'cover',
-                        borderRadius: 1,
-                      }}
-                    />
-                    <ImageListItemBar
-                      title={ds.name}
-                      sx={{ borderRadius: '0 0 4px 4px' }}
-                    />
-                  </ImageListItem>
-                ))}
-              </ImageList>
+            {showImages && (
+              <>
+                {loadingImages ? (
+                  <CircularProgress size={20} />
+                ) : taskImages.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Không có ảnh nào trong các dataset được chọn
+                  </Typography>
+                ) : (
+                  <ImageList cols={4} gap={8}>
+                    {taskImages.map((img) => (
+                      <ImageListItem key={img.id}>
+                        <ImageWithAuth
+                          src={formatImageUrl(img.thumbnail)}
+                          alt={img.name}
+                          sx={{
+                            height: 120,
+                            width: '100%',
+                            objectFit: 'cover',
+                            borderRadius: 1,
+                          }}
+                        />
+                        <ImageListItemBar
+                          title={img.name}
+                          sx={{ borderRadius: '0 0 4px 4px' }}
+                        />
+                      </ImageListItem>
+                    ))}
+                  </ImageList>
+                )}
+              </>
             )}
           </Box>
         </Stack>

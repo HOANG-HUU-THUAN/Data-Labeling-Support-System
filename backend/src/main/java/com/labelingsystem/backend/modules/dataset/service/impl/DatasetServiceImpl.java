@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.labelingsystem.backend.modules.dataset.dto.response.DatasetResponse;
+import com.labelingsystem.backend.modules.dataset.dto.response.ImageResponse;
 import java.util.stream.Collectors;
 
 @Service
@@ -108,5 +109,24 @@ public class DatasetServiceImpl implements DatasetService {
         imageRepository.saveAll(imageEntities);
         
         return "Successfully uploaded " + images.length + " images to dataset '" + datasetName + "'";
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ImageResponse> getImagesByDatasetId(Long datasetId) {
+        return imageRepository.findByDatasetId(datasetId).stream()
+                .map(this::mapToImageResponse)
+                .collect(Collectors.toList());
+    }
+
+    private ImageResponse mapToImageResponse(Image image) {
+        String baseUrl = "/api/v1/images";
+        return ImageResponse.builder()
+                .id(image.getId())
+                .name(image.getFilePath().substring(image.getFilePath().lastIndexOf("/") + 1))
+                .url(baseUrl + "/serve/" + image.getFilePath())
+                .thumbnail(baseUrl + "/thumbnail/" + image.getFilePath())
+                .status(image.getStatus())
+                .build();
     }
 }

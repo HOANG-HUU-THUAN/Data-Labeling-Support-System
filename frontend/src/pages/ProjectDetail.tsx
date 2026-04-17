@@ -9,6 +9,8 @@ import { getLabelsByProject, createLabel, updateLabel, deleteLabel } from '../ap
 import type { Project } from '../types/project';
 import type { Label } from '../types/label';
 import ConfirmDialog from '../components/ConfirmDialog';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -138,7 +140,27 @@ export default function ProjectDetail() {
         <Divider sx={{ mb: 2 }} />
 
         <Typography variant="overline" color="text.secondary">Hướng dẫn (Guideline)</Typography>
-        <Typography sx={{ whiteSpace: 'pre-wrap' }}>{project.guideline || 'Chưa có hướng dẫn'}</Typography>
+        <Box sx={{ 
+          mt: 1, 
+          p: 2, 
+          bgcolor: 'grey.50', 
+          borderRadius: 1, 
+          border: '1px solid',
+          borderColor: 'grey.200',
+          '& p': { my: 1 },
+          '& ul, & ol': { pl: 3 },
+          '& h1, & h2, & h3': { mt: 2, mb: 1 },
+          '& code': { bgcolor: 'grey.200', p: '2px 4px', borderRadius: '4px' },
+          '& blockquote': { borderLeft: '4px solid', borderColor: 'grey.400', pl: 2, m: '10px 0', color: 'text.secondary' }
+        }}>
+          {project.guideline ? (
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {project.guideline}
+            </ReactMarkdown>
+          ) : (
+            <Typography variant="body2" color="text.secondary">Chưa có hướng dẫn</Typography>
+          )}
+        </Box>
       </Paper>
 
       {/* LABEL LIST */}

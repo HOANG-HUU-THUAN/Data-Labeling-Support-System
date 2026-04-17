@@ -1,6 +1,7 @@
 package com.labelingsystem.backend.modules.dataset.controller;
 
 import com.labelingsystem.backend.common.response.ApiResponse;
+import com.labelingsystem.backend.modules.dataset.dto.response.ImageResponse;
 import com.labelingsystem.backend.modules.dataset.service.DatasetService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -51,5 +52,10 @@ public class DatasetController {
         
         String result = datasetService.uploadBatch(projectId, datasetName, images);
         return ApiResponse.success(result);
+    }
+
+    @GetMapping("/datasets/{id}/images")
+    public ApiResponse<List<ImageResponse>> getImagesByDataset(@PathVariable Long id) {
+        return ApiResponse.success(datasetService.getImagesByDatasetId(id));
     }
 }

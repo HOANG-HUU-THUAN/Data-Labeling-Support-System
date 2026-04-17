@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
+  AlertTitle,
   Box,
   Button,
   CircularProgress,
@@ -41,6 +42,11 @@ import { submitReview } from '../api/reviewApi';
 import ImageWithAuth from '../components/ImageWithAuth';
 import useAuthStore from '../store/authStore';
 import type { PointDTO } from '../types/annotation';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { getProjectById } from '../api/projectApi';
+import type { Project } from '../types/project';
 
 type DragState =
   | { type: 'draw'; startX: number; startY: number }
@@ -58,6 +64,7 @@ const AnnotationPage = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
 
+  const [task, setTask] = useState<any>(null);
   const [images, setImages] = useState<AnnotationImage[]>([]);
   const [selectedImage, setSelectedImage] = useState<AnnotationImage | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,10 +89,14 @@ const AnnotationPage = () => {
 
   const user = useAuthStore((s) => s.user);
   const isReviewerOrAdmin = user?.role === 'REVIEWER' || user?.role === 'ADMIN';
+  const isReadOnly = user?.role === 'REVIEWER' || task?.status === 'APPROVED';
 
   const [openRejectDialog, setOpenRejectDialog] = useState(false);
   const [errorCategory, setErrorCategory] = useState('');
   const [rejectionNote, setRejectionNote] = useState('');
+
+  const [openGuidelineDialog, setOpenGuidelineDialog] = useState(false);
+  const [project, setProject] = useState<Project | null>(null);
 
   // Undo / redo
   const historyRef = useRef<Annotation[][]>([]);
@@ -138,10 +149,12 @@ const AnnotationPage = () => {
     if (!taskId) return;
     const id = Number(taskId);
     if (isNaN(id)) return;
-    Promise.all([getTaskImages(id), getTaskById(id)]).then(([imgs, task]) => {
+    Promise.all([getTaskImages(id), getTaskById(id)]).then(([imgs, t]) => {
       setImages(imgs);
-      if (task) {
-        getLabelsByProject(task.projectId).then((lbls) => {
+      setTask(t);
+      if (t) {
+        getProjectById(t.projectId).then(p => setProject(p ?? null));
+        getLabelsByProject(t.projectId).then((lbls) => {
           setLabels(lbls);
           if (lbls.length > 0) setSelectedLabel(lbls[0]);
         });
@@ -268,7 +281,7 @@ const AnnotationPage = () => {
   };
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!selectedLabel || !selectedImage) return;
+    if (isReadOnly || !selectedLabel || !selectedImage) return;
     e.preventDefault();
     const pos = getRelativePos(e);
 
@@ -284,7 +297,7 @@ const AnnotationPage = () => {
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
-    if (tool !== 'POLYGON' || activePoints.length < 3 || !selectedLabel || !selectedImage) return;
+    if (isReadOnly || tool !== 'POLYGON' || activePoints.length < 3 || !selectedLabel || !selectedImage) return;
     e.preventDefault();
     e.stopPropagation();
 
@@ -315,6 +328,7 @@ const AnnotationPage = () => {
   };
 
   const handleBoxMouseDown = (e: React.MouseEvent, ann: Annotation) => {
+    if (isReadOnly) return;
     e.stopPropagation();
     e.preventDefault();
     setSelectedBoxId(ann.id);
@@ -323,6 +337,7 @@ const AnnotationPage = () => {
   };
 
   const handleCornerMouseDown = (e: React.MouseEvent, ann: Annotation, corner: 'tl' | 'tr' | 'bl' | 'br') => {
+    if (isReadOnly) return;
     e.stopPropagation();
     e.preventDefault();
     const pos = getRelativePos(e);
@@ -378,7 +393,7 @@ const AnnotationPage = () => {
   };
 
   const handleDeleteAnnotation = (annId: number) => {
-    if (!selectedImage) return;
+    if (isReadOnly || !selectedImage) return;
     deleteAnnotation(annId).then(() => {
       const next = currentAnnotationsRef.current.filter((a) => a.id !== annId);
       setAnnotations(next);
@@ -461,32 +476,36 @@ const AnnotationPage = () => {
               <Typography variant="caption" color="text.secondary">Đang lưu...</Typography>
             </Box>
           )}
-          <Tooltip title="Hoàn tác (Ctrl+Z)">
-            <span>
-              <Button
-                size="small"
-                variant="outlined"
-                disabled={!canUndo}
-                onClick={() => { if (historyIndexRef.current > 0) applySnapshot(historyIndexRef.current - 1); }}
-                sx={{ minWidth: 36, px: 1 }}
-              >
-                <UndoIcon fontSize="small" />
-              </Button>
-            </span>
-          </Tooltip>
-          <Tooltip title="Làm lại (Ctrl+Y)">
-            <span>
-              <Button
-                size="small"
-                variant="outlined"
-                disabled={!canRedo}
-                onClick={() => { if (historyIndexRef.current < historyRef.current.length - 1) applySnapshot(historyIndexRef.current + 1); }}
-                sx={{ minWidth: 36, px: 1 }}
-              >
-                <RedoIcon fontSize="small" />
-              </Button>
-            </span>
-          </Tooltip>
+          {!isReadOnly && (
+            <>
+              <Tooltip title="Hoàn tác (Ctrl+Z)">
+                <span>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={!canUndo}
+                    onClick={() => { if (historyIndexRef.current > 0) applySnapshot(historyIndexRef.current - 1); }}
+                    sx={{ minWidth: 36, px: 1 }}
+                  >
+                    <UndoIcon fontSize="small" />
+                  </Button>
+                </span>
+              </Tooltip>
+              <Tooltip title="Làm lại (Ctrl+Y)">
+                <span>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={!canRedo}
+                    onClick={() => { if (historyIndexRef.current < historyRef.current.length - 1) applySnapshot(historyIndexRef.current + 1); }}
+                    sx={{ minWidth: 36, px: 1 }}
+                  >
+                    <RedoIcon fontSize="small" />
+                  </Button>
+                </span>
+              </Tooltip>
+            </>
+          )}
           {!loading && images.length > 0 && (
             isReviewerOrAdmin ? (
               <>
@@ -523,11 +542,39 @@ const AnnotationPage = () => {
               </Button>
             )
           )}
+          <Tooltip title="Xem hướng dẫn (Guideline)">
+            <Button
+              size="small"
+              variant="outlined"
+              color="info"
+              onClick={() => setOpenGuidelineDialog(true)}
+              startIcon={<HelpOutlineIcon fontSize="small" />}
+              sx={{ minWidth: 120, px: 2, ml: 1 }}
+            >
+              Hướng dẫn
+            </Button>
+          </Tooltip>
         </Box>
       </Box>
 
+      {task?.status === 'REJECTED' && (
+        <Alert 
+          severity="error" 
+          variant="filled"
+          sx={{ mb: 1 }}
+        >
+          <AlertTitle>Task bị từ chối</AlertTitle>
+          <Typography variant="body2">
+            <strong>Loại lỗi:</strong> {task.errorCategory || '—'}
+          </Typography>
+          <Typography variant="body2">
+            <strong>Ghi chú từ reviewer:</strong> {task.comment || '—'}
+          </Typography>
+        </Alert>
+      )}
+
       {/* TOOLBAR */}
-      {!loading && (
+      {!loading && !isReadOnly && (
         <AnnotationToolbar
           labels={labels}
           selectedLabel={selectedLabel}
@@ -583,7 +630,7 @@ const AnnotationPage = () => {
                 sx={{ position: 'relative', cursor: 'pointer' }}
               >
                 <ImageWithAuth
-                  src={img.url}
+                  src={img.thumbnailUrl}
                   alt={img.name}
                   sx={{
                     width: '100%',
@@ -645,7 +692,7 @@ const AnnotationPage = () => {
                   maxWidth="100%"
                   sx={{
                     userSelect: 'none',
-                    cursor: selectedLabel ? 'crosshair' : 'default',
+                    cursor: (isReadOnly || !selectedLabel) ? 'default' : 'crosshair',
                   }}
                   onMouseDown={handleCanvasMouseDown}
                   onMouseMove={handleCanvasMouseMove}
@@ -763,15 +810,15 @@ const AnnotationPage = () => {
                           border: `${isSelected ? 3 : 2}px solid ${color}`,
                           outline: isSelected ? '2px solid rgba(255,255,255,0.55)' : 'none',
                           outlineOffset: '-2px',
-                          cursor: 'move',
+                          cursor: isReadOnly ? 'default' : 'move',
                           pointerEvents: 'auto',
                           boxSizing: 'border-box',
                           zIndex: 11,
-                          '&:hover': {
+                          '&:hover': !isReadOnly ? {
                             border: `3px solid ${color}`,
                             outline: `2px solid rgba(255,255,255,0.45)`,
                             outlineOffset: '-2px',
-                          },
+                          } : {},
                         }}
                       >
                         <Typography
@@ -791,7 +838,7 @@ const AnnotationPage = () => {
                         >
                           {labels.find((l) => l.id === ann.labelId)?.name ?? ''}
                         </Typography>
-                        {isSelected && (
+                        {isSelected && !isReadOnly && (
                           <Box
                             onMouseDown={(e) => { e.stopPropagation(); handleDeleteAnnotation(ann.id); }}
                             title="Xóa box"
@@ -814,7 +861,7 @@ const AnnotationPage = () => {
                             <DeleteForeverIcon sx={{ fontSize: 13 }} />
                           </Box>
                         )}
-                        {isSelected && CORNER_HANDLES.map(({ key, cursor, sx }) => (
+                        {isSelected && !isReadOnly && CORNER_HANDLES.map(({ key, cursor, sx }) => (
                           <Box
                             key={key}
                             onMouseDown={(e) => handleCornerMouseDown(e, ann, key)}
@@ -897,6 +944,35 @@ const AnnotationPage = () => {
           <Button variant="contained" color="error" onClick={handleRejectTask} disabled={submitting}>
             {submitting ? <CircularProgress size={18} color="inherit" /> : 'Xác nhận từ chối'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Guideline Dialog */}
+      <Dialog open={openGuidelineDialog} onClose={() => setOpenGuidelineDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <HelpOutlineIcon color="info" />
+          Hướng dẫn dự án: {project?.name}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ 
+            '& p': { my: 1.5 },
+            '& ul, & ol': { pl: 3 },
+            '& h1, & h2, & h3': { mt: 2.5, mb: 1 },
+            '& code': { bgcolor: 'grey.100', p: '2px 4px', borderRadius: '4px', fontSize: '0.9em' },
+            '& blockquote': { borderLeft: '4px solid', borderColor: 'grey.300', pl: 2, m: '15px 0', color: 'text.secondary' },
+            '& img': { maxWidth: '100%' }
+          }}>
+            {project?.guideline ? (
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {project.guideline}
+              </ReactMarkdown>
+            ) : (
+              <Typography color="text.secondary">Dự án này chưa có hướng dẫn chi tiết.</Typography>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenGuidelineDialog(false)} variant="contained">Đóng</Button>
         </DialogActions>
       </Dialog>
     </Box>

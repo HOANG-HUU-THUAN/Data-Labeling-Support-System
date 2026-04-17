@@ -1,8 +1,9 @@
 import axiosInstance from './axios';
 import type { Project } from '../types/project';
+import type { PageParams, PageResponse } from '../types/common';
 
-export const getProjects = async (): Promise<Project[]> => {
-  const response = await axiosInstance.get('/projects');
+export const getProjects = async (params?: PageParams & { name?: string; type?: string }): Promise<PageResponse<Project>> => {
+  const response = await axiosInstance.get('/projects', { params });
   return response.data.data;
 };
 

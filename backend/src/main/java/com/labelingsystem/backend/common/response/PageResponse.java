@@ -14,6 +14,7 @@ import java.util.List;
 public class PageResponse<T> {
     private int pageNumber;
     private int pageSize;
+    private int currentPage;
     private long totalElements;
     private int totalPages;
     private boolean last;

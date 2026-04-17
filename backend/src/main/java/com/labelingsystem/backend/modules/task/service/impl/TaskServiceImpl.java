@@ -33,6 +33,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import com.labelingsystem.backend.common.response.PageResponse;
+import com.labelingsystem.backend.modules.task.repository.TaskSpecification;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -44,13 +50,21 @@ public class TaskServiceImpl implements TaskService {
     ProjectRepository projectRepository;
     UserRepository userRepository;
     AnnotationRepository annotationRepository;
+    com.labelingsystem.backend.modules.review.repository.ReviewRepository reviewRepository;
 
     @Override
     @Transactional(readOnly = true)
-    public List<TaskResponse> getAllTasks() {
-        return taskRepository.findAll().stream()
-                .map(this::mapToTaskResponse)
-                .collect(Collectors.toList());
+    public PageResponse<TaskResponse> getAllTasks(String status, Pageable pageable) {
+        Specification<Task> spec = Specification.where(TaskSpecification.hasStatus(status));
+        Page<Task> pageData = taskRepository.findAll(spec, pageable);
+        
+        return PageResponse.<TaskResponse>builder()
+                .currentPage(pageData.getNumber())
+                .pageSize(pageData.getSize())
+                .totalPages(pageData.getTotalPages())
+                .totalElements(pageData.getTotalElements())
+                .data(pageData.getContent().stream().map(this::mapToTaskResponse).collect(Collectors.toList()))
+                .build();
     }
 
     @Override
@@ -134,15 +148,30 @@ public class TaskServiceImpl implements TaskService {
         long annotatedCount = annotationRepository.countAnnotatedImages(task.getId());
         double progress = task.getImages().isEmpty() ? 0.0 : (double) annotatedCount / task.getImages().size() * 100.0;
 
+        String errorCategory = null;
+        String comment = null;
+        if ("REJECTED".equals(task.getStatus())) {
+            var review = reviewRepository.findFirstByTaskIdOrderByCreatedAtDesc(task.getId());
+            if (review.isPresent()) {
+                errorCategory = review.get().getErrorCategory();
+                comment = review.get().getComment();
+            }
+        }
+
         return TaskResponse.builder()
                 .id(task.getId())
                 .name(task.getName())
                 .projectId(task.getProject().getId())
+                .projectName(task.getProject().getName())
                 .datasetIds(datasetIds)
                 .assigneeId(task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getId() : null)
+                .assigneeUsername(task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getUsername() : null)
                 .reviewerId(task.getAssignedReviewer() != null ? task.getAssignedReviewer().getId() : null)
+                .reviewerUsername(task.getAssignedReviewer() != null ? task.getAssignedReviewer().getUsername() : null)
                 .status(task.getStatus())
                 .progress(progress)
+                .errorCategory(errorCategory)
+                .comment(comment)
                 .createdAt(task.getCreatedAt())
                 .build();
     }
@@ -209,43 +238,64 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MyTaskResponse> getMyTasks(Long annotatorId) {
-        List<String> allowedStatuses = List.of("PENDING", "IN_PROGRESS", "REJECTED");
-
-        return taskRepository
-                .findByAssignedAnnotatorIdAndStatusInOrderByCreatedAtDesc(annotatorId, allowedStatuses)
-                .stream()
-                .map(task -> MyTaskResponse.builder()
-                        .taskId(task.getId())
-                        .projectId(task.getProject().getId())
-                        .projectName(task.getProject().getName())
-                        .status(task.getStatus())
-                        .assignedAnnotatorId(task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getId() : null)
-                        .assignedReviewerId(task.getAssignedReviewer() != null ? task.getAssignedReviewer().getId() : null)
-                        .imageCount(task.getImages().size())
-                        .build())
-                .toList();
+    public PageResponse< MyTaskResponse> getMyTasks(Long annotatorId, String projectName, String status, Pageable pageable) {
+        Specification<Task> spec = Specification.where(TaskSpecification.hasAnnotatorId(annotatorId))
+                .and(TaskSpecification.hasProjectName(projectName))
+                .and(TaskSpecification.hasStatus(status));
+        
+        Page<Task> pageData = taskRepository.findAll(spec, pageable);
+        
+        return PageResponse.<MyTaskResponse>builder()
+                .currentPage(pageData.getNumber())
+                .pageSize(pageData.getSize())
+                .totalPages(pageData.getTotalPages())
+                .totalElements(pageData.getTotalElements())
+                .data(pageData.getContent().stream().map(this::mapToMyTaskResponse).collect(Collectors.toList()))
+                .build();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<MyTaskResponse> getTasksForReview(Long reviewerId) {
-        List<String> allowedStatuses = List.of("IN_REVIEW");
+    public PageResponse<MyTaskResponse> getTasksForReview(Long reviewerId, String projectName, String status, Pageable pageable) {
+        Specification<Task> spec = Specification.where(TaskSpecification.hasReviewerId(reviewerId))
+                .and(TaskSpecification.hasProjectName(projectName))
+                .and(TaskSpecification.hasStatus(status));
+        
+        Page<Task> pageData = taskRepository.findAll(spec, pageable);
+        
+        return PageResponse.<MyTaskResponse>builder()
+                .currentPage(pageData.getNumber())
+                .pageSize(pageData.getSize())
+                .totalPages(pageData.getTotalPages())
+                .totalElements(pageData.getTotalElements())
+                .data(pageData.getContent().stream().map(this::mapToMyTaskResponse).collect(Collectors.toList()))
+                .build();
+    }
 
-        return taskRepository
-                .findByAssignedReviewerIdAndStatusInOrderByCreatedAtDesc(reviewerId, allowedStatuses)
-                .stream()
-                .map(task -> MyTaskResponse.builder()
-                        .taskId(task.getId())
-                        .projectId(task.getProject().getId())
-                        .projectName(task.getProject().getName())
-                        .status(task.getStatus())
-                        .assignedAnnotatorId(task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getId() : null)
-                        .assignedReviewerId(task.getAssignedReviewer() != null ? task.getAssignedReviewer().getId() : null)
-                        .imageCount(task.getImages().size())
-                        .createdAt(task.getCreatedAt())
-                        .build())
-                .toList();
+    private MyTaskResponse mapToMyTaskResponse(Task task) {
+        String errorCategory = null;
+        String comment = null;
+        if ("REJECTED".equals(task.getStatus())) {
+            var review = reviewRepository.findFirstByTaskIdOrderByCreatedAtDesc(task.getId());
+            if (review.isPresent()) {
+                errorCategory = review.get().getErrorCategory();
+                comment = review.get().getComment();
+            }
+        }
+        return MyTaskResponse.builder()
+            .taskId(task.getId())
+            .projectId(task.getProject().getId())
+            .projectName(task.getProject().getName())
+            .status(task.getStatus())
+            .assignedAnnotatorId(task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getId() : null)
+            .assignedAnnotatorUsername(task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getUsername() : null)
+            .assignedReviewerId(task.getAssignedReviewer() != null ? task.getAssignedReviewer().getId() : null)
+            .assignedReviewerUsername(task.getAssignedReviewer() != null ? task.getAssignedReviewer().getUsername() : null)
+            .imageCount(task.getImages().size())
+            .errorCategory(errorCategory)
+            .comment(comment)
+            .createdAt(task.getCreatedAt())
+            .build();
     }
 
     @Override

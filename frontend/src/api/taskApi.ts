@@ -1,14 +1,9 @@
 import axiosInstance from './axios';
 import type { Task, TaskStatus, MyTask } from '../types/task';
+import type { PageParams, PageResponse } from '../types/common';
 
-// The backend endpoints I need:
-// POST /v1/projects/{projectId}/tasks/batch -> createBatchTasks
-// GET /v1/tasks/my-tasks
-// GET /v1/tasks/{taskId}/images
-// Note: We might have other missing endpoints in TaskController. I will map them directly matching the mock. If backend doesn't have it, it's a backend issue, but for now I'll just map them.
-
-export const getTasks = async (): Promise<Task[]> => {
-  const response = await axiosInstance.get(`/v1/tasks`);
+export const getTasks = async (params?: PageParams & { status?: string }): Promise<PageResponse<Task>> => {
+  const response = await axiosInstance.get(`/v1/tasks`, { params });
   return response.data.data;
 };
 
@@ -58,13 +53,13 @@ export const submitTask = async (id: number): Promise<Task> => {
   return response.data.data;
 };
 
-export const getMyTasks = async (): Promise<MyTask[]> => {
-  const response = await axiosInstance.get(`/v1/tasks/my-tasks`);
+export const getMyTasks = async (params?: PageParams & { projectName?: string; status?: string }): Promise<PageResponse<MyTask>> => {
+  const response = await axiosInstance.get(`/v1/tasks/my-tasks`, { params });
   return response.data.data;
 };
 
-export const getTasksForReview = async (): Promise<MyTask[]> => {
-  const response = await axiosInstance.get(`/v1/tasks/review`);
+export const getTasksForReview = async (params?: PageParams & { projectName?: string; status?: string }): Promise<PageResponse<MyTask>> => {
+  const response = await axiosInstance.get(`/v1/tasks/review`, { params });
   return response.data.data;
 };
 
@@ -74,6 +69,7 @@ export const getTaskImages = async (taskId: number): Promise<{ id: number, name:
     id: item.imageId,
     name: item.filePath,
     url: item.originalUrl,
+    thumbnailUrl: item.thumbnailUrl,
   }));
 };
 

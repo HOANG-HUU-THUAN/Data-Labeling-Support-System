@@ -11,6 +11,10 @@ import com.labelingsystem.backend.modules.task.dto.response.TaskResponse;
 import com.labelingsystem.backend.modules.task.dto.response.TaskSubmitResponse;
 import com.labelingsystem.backend.modules.task.service.TaskService;
 import com.labelingsystem.backend.security.service.UserDetailsImpl;
+import com.labelingsystem.backend.common.response.PageResponse;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -32,8 +36,17 @@ public class TaskController {
 
     @GetMapping("/tasks")
     @PreAuthorize("hasAuthority('MANAGER') or hasAuthority('ADMIN')")
-    public ApiResponse<List<TaskResponse>> getAllTasks() {
-        return ApiResponse.success(taskService.getAllTasks());
+    public ApiResponse<PageResponse<TaskResponse>> getAllTasks(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection) {
+        
+        Sort sort = sortDirection.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        
+        return ApiResponse.success(taskService.getAllTasks(status, pageable));
     }
 
     @GetMapping("/tasks/{taskId}")
@@ -87,16 +100,38 @@ public class TaskController {
 
     @GetMapping("/tasks/my-tasks")
     @PreAuthorize("hasAuthority('ANNOTATOR')")
-    public ApiResponse<List<MyTaskResponse>> getMyTasks(Authentication authentication) {
+    public ApiResponse<PageResponse<MyTaskResponse>> getMyTasks(
+            @RequestParam(required = false) String projectName,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "taskId") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            Authentication authentication) {
+        
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-        return ApiResponse.success(taskService.getMyTasks(userDetails.getId()));
+        Sort sort = sortDirection.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        
+        return ApiResponse.success(taskService.getMyTasks(userDetails.getId(), projectName, status, pageable));
     }
 
     @GetMapping("/tasks/review")
     @PreAuthorize("hasAuthority('REVIEWER') or hasAuthority('MANAGER') or hasAuthority('ADMIN')")
-    public ApiResponse<List<MyTaskResponse>> getTasksForReview(Authentication authentication) {
+    public ApiResponse<PageResponse<MyTaskResponse>> getTasksForReview(
+            @RequestParam(required = false) String projectName,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "taskId") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            Authentication authentication) {
+        
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-        return ApiResponse.success(taskService.getTasksForReview(userDetails.getId()));
+        Sort sort = sortDirection.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        
+        return ApiResponse.success(taskService.getTasksForReview(userDetails.getId(), projectName, status, pageable));
     }
 
     @GetMapping("/tasks/{taskId}/images")

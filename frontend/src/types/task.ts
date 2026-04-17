@@ -1,11 +1,16 @@
 export interface Task {
   id: number;
   projectId: number;
+  projectName?: string;
   name: string;
   datasetIds: number[];
   status: TaskStatus;
   assigneeId?: number;
+  assigneeUsername?: string;
   reviewerId?: number;
+  reviewerUsername?: string;
+  errorCategory?: string;
+  comment?: string;
 }
 
 export interface MyTask {
@@ -14,8 +19,12 @@ export interface MyTask {
   projectName: string;
   status: TaskStatus;
   assignedAnnotatorId: number;
+  assignedAnnotatorUsername?: string;
   assignedReviewerId: number;
+  assignedReviewerUsername?: string;
   imageCount: number;
+  errorCategory?: string;
+  comment?: string;
   createdAt: string;
 }
 
@@ -25,4 +34,5 @@ export interface AnnotationImage {
   id: number;
   name: string;
   url: string;
+  thumbnailUrl: string;
 }

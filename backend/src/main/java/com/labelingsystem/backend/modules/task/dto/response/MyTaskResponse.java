@@ -16,7 +16,11 @@ public class MyTaskResponse {
     private String projectName;
     private String status;
     private Long assignedAnnotatorId;
+    private String assignedAnnotatorUsername;
     private Long assignedReviewerId;
+    private String assignedReviewerUsername;
     private int imageCount;
+    private String errorCategory;
+    private String comment;
     private LocalDateTime createdAt;
 }

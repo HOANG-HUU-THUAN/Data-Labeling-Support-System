@@ -2,6 +2,8 @@ package com.labelingsystem.backend.modules.dataset.service;
 
 import com.labelingsystem.backend.modules.dataset.dto.response.DatasetResponse;
 import java.util.List;
+
+import com.labelingsystem.backend.modules.dataset.dto.response.ImageResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface DatasetService {
@@ -10,4 +12,6 @@ public interface DatasetService {
     List<DatasetResponse> getDatasetsByProjectId(Long projectId);
     List<DatasetResponse> getDatasetsByIds(List<Long> ids);
     void deleteDataset(Long id);
+    
+    List<ImageResponse> getImagesByDatasetId(Long datasetId);
 }

@@ -54,7 +54,7 @@ const TaskFormPage = () => {
 
   // Load projects, annotators, and reviewers once
   useEffect(() => {
-    getProjects().then(setProjects);
+    getProjects({ size: 100 }).then((res) => setProjects(res.data));
     getUsersByRole('ANNOTATOR').then(setAnnotators);
     getUsersByRole('REVIEWER').then(setReviewers);
   }, []);

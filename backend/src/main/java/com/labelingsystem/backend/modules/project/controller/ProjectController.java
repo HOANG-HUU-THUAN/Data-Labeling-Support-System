@@ -16,7 +16,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
-import java.util.List;
+import com.labelingsystem.backend.common.response.PageResponse;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+
 @CrossOrigin(origins = "http://localhost:5173")
 //@CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -40,12 +44,24 @@ public class ProjectController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('MANAGER')")
-    public ApiResponse<List<ProjectResponse>> getMyProjects(Authentication authentication) {
+    public ApiResponse<PageResponse<ProjectResponse>> getMyProjects(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String type,
+            Authentication authentication) {
+        
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         Long managerId = userDetails.getId();
 
-        return ApiResponse.<List<ProjectResponse>>builder()
-                .data(projectService.getProjectsByManagerId(managerId))
+        Sort sort = sortDirection.equalsIgnoreCase(Sort.Direction.ASC.name()) ? 
+                Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        return ApiResponse.<PageResponse<ProjectResponse>>builder()
+                .data(projectService.getProjectsByManagerId(managerId, name, type, pageable))
                 .build();
     }
 

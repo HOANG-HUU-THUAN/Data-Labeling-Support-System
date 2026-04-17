@@ -19,6 +19,11 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.labelingsystem.backend.common.response.PageResponse;
+import com.labelingsystem.backend.modules.project.repository.ProjectSpecification;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,12 +65,25 @@ public class ProjectServiceImpl implements ProjectService {
 
 
     @Override
-    public List<ProjectResponse> getProjectsByManagerId(Long managerId) {
-        List<Project> projects = projectRepository.findByCreatedById(managerId);
+    public PageResponse<ProjectResponse> getProjectsByManagerId(Long managerId, String name, String type, Pageable pageable) {
+        Specification<Project> spec = Specification.where(ProjectSpecification.hasCreatedBy(managerId))
+                .and(ProjectSpecification.hasName(name))
+                .and(ProjectSpecification.hasType(type));
 
-        return projects.stream()
+        Page<Project> projectPage = projectRepository.findAll(spec, pageable);
+
+        List<ProjectResponse> projectResponses = projectPage.getContent().stream()
                 .map(projectMapper::toProjectResponse)
                 .collect(Collectors.toList());
+
+        return PageResponse.<ProjectResponse>builder()
+                .pageNumber(projectPage.getNumber())
+                .pageSize(projectPage.getSize())
+                .totalElements(projectPage.getTotalElements())
+                .totalPages(projectPage.getTotalPages())
+                .last(projectPage.isLast())
+                .data(projectResponses)
+                .build();
     }
 
     // ==========================================
