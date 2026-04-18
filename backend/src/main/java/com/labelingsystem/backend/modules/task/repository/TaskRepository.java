@@ -17,5 +17,8 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
     List<Task> findByAssignedReviewerIdAndStatusInOrderByCreatedAtDesc(Long reviewerId, List<String> statuses);
 
     @EntityGraph(attributePaths = {"project", "assignedAnnotator", "assignedReviewer", "images", "images.dataset"})
+    List<Task> findByProjectIdAndStatus(Long projectId, String status);
+
+    @EntityGraph(attributePaths = {"project", "assignedAnnotator", "assignedReviewer", "images", "images.dataset"})
     Optional<Task> findById(Long id);
 }

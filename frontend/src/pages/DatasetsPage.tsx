@@ -136,7 +136,7 @@ const DatasetsPage = () => {
               value={datasetName}
               onChange={(e) => setDatasetName(e.target.value)}
               sx={{ flex: 1 }}
-              placeholder="VD: Batch 1, Chó mèo, ..."
+
               disabled={uploading}
             />
             <Button variant="outlined" component="label" sx={{ height: 40 }}>
@@ -257,7 +257,9 @@ const DatasetsPage = () => {
             <Typography variant="overline" color="text.secondary">
               Danh sách Dataset ({datasets.length})
             </Typography>
-            {loadingDatasets && <CircularProgress size={18} />}
+            <Stack direction="row" spacing={2} alignItems="center">
+              {loadingDatasets && <CircularProgress size={18} />}
+            </Stack>
           </Stack>
 
           {!loadingDatasets && datasets.length === 0 && (
