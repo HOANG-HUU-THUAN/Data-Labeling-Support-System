@@ -115,48 +115,111 @@ public class YoloExportStrategy implements ExportStrategy {
         return sb.toString().getBytes(StandardCharsets.UTF_8);
     }
 
+    /**
+     * Build nội dung file label YOLO cho 1 ảnh.
+     * - BOX  → "classId xCenter yCenter w h" (tất cả normalize [0,1])
+     * - POLYGON → "classId x1 y1 x2 y2 ... xn yn" (YOLOv8 segmentation, normalize [0,1])
+     */
     private String buildYoloLabelContent(List<Annotation> annotations, Map<Long, Integer> labelIdToCocoIdx,
             int imgWidth, int imgHeight) {
         StringBuilder sb = new StringBuilder();
 
         for (Annotation anno : annotations) {
-            if (!"BOX".equals(anno.getType())) continue;
             if (anno.getLabel() == null) {
                 log.warn("[YOLO] Bỏ qua annotation id={}: label null", anno.getId());
                 continue;
             }
 
-            JsonNode coords = anno.getCoordinates();
-            double x = coords.has("x") ? coords.get("x").asDouble() : 0;
-            double y = coords.has("y") ? coords.get("y").asDouble() : 0;
-            double w = coords.has("w") ? coords.get("w").asDouble() : 0;
-            double h = coords.has("h") ? coords.get("h").asDouble() : 0;
-
-            if (w <= 0 || h <= 0) {
-                log.warn("[YOLO] Bỏ qua BBOX invalid (w={}, h={})", w, h);
-                continue;
-            }
-
-            // Normalize
-            double xCenter = (x + w / 2.0) / imgWidth;
-            double yCenter = (y + h / 2.0) / imgHeight;
-            double normW = w / imgWidth;
-            double normH = h / imgHeight;
-
-            // Clamp về [0, 1]
-            xCenter = clamp(xCenter, 0.0, 1.0);
-            yCenter = clamp(yCenter, 0.0, 1.0);
-            normW = clamp(normW, 0.0, 1.0);
-            normH = clamp(normH, 0.0, 1.0);
-
-            if (normW <= 0 || normH <= 0) continue;
-
             int classIdx = labelIdToCocoIdx.getOrDefault(anno.getLabel().getId(), 0);
-            sb.append(String.format(Locale.US, "%d %.6f %.6f %.6f %.6f\n",
-                    classIdx, xCenter, yCenter, normW, normH));
+            JsonNode coords = anno.getCoordinates();
+            String type = anno.getType();
+
+            if ("BOX".equals(type)) {
+                String line = buildBoxLine(classIdx, coords, imgWidth, imgHeight);
+                if (line != null) sb.append(line);
+
+            } else if ("POLYGON".equals(type)) {
+                String line = buildPolygonLine(classIdx, coords, imgWidth, imgHeight);
+                if (line != null) sb.append(line);
+
+            } else {
+                log.warn("[YOLO] Bỏ qua annotation type không hỗ trợ: {}", type);
+            }
         }
 
         return sb.toString();
+    }
+
+    /** BOX → "classId xCenter yCenter normW normH\n" */
+    private String buildBoxLine(int classIdx, JsonNode coords, int imgWidth, int imgHeight) {
+        double x = coords.has("x") ? coords.get("x").asDouble() : 0;
+        double y = coords.has("y") ? coords.get("y").asDouble() : 0;
+        double w = coords.has("w") ? coords.get("w").asDouble() : 0;
+        double h = coords.has("h") ? coords.get("h").asDouble() : 0;
+
+        if (w <= 0 || h <= 0) {
+            log.warn("[YOLO] Bỏ qua BOX invalid (w={}, h={})", w, h);
+            return null;
+        }
+
+        double xCenter = clamp((x + w / 2.0) / imgWidth, 0.0, 1.0);
+        double yCenter = clamp((y + h / 2.0) / imgHeight, 0.0, 1.0);
+        double normW   = clamp(w / imgWidth, 0.0, 1.0);
+        double normH   = clamp(h / imgHeight, 0.0, 1.0);
+
+        if (normW <= 0 || normH <= 0) return null;
+
+        return String.format(Locale.US, "%d %.6f %.6f %.6f %.6f%n", classIdx, xCenter, yCenter, normW, normH);
+    }
+
+    /**
+     * POLYGON → "classId x1_norm y1_norm x2_norm y2_norm ... xn_norm yn_norm\n"
+     * Format YOLOv8 segmentation.
+     */
+    private String buildPolygonLine(int classIdx, JsonNode coords, int imgWidth, int imgHeight) {
+        List<Double> flatPoints = extractPolygonPoints(coords);
+
+        if (flatPoints.size() < 6) {
+            log.warn("[YOLO] Bỏ qua POLYGON: ít hơn 3 điểm");
+            return null;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(classIdx);
+
+        for (int i = 0; i < flatPoints.size() - 1; i += 2) {
+            double xNorm = clamp(flatPoints.get(i) / imgWidth, 0.0, 1.0);
+            double yNorm = clamp(flatPoints.get(i + 1) / imgHeight, 0.0, 1.0);
+            sb.append(String.format(Locale.US, " %.6f %.6f", xNorm, yNorm));
+        }
+        sb.append(System.lineSeparator());
+        return sb.toString();
+    }
+
+    /**
+     * Trích xuất flat list [x1,y1,x2,y2,...] từ JSON polygon.
+     * Hỗ trợ: [{x,y},...] | [x1,y1,...] | [[x1,y1,...]] | {points:[...]}
+     */
+    private List<Double> extractPolygonPoints(JsonNode coords) {
+        List<Double> points = new ArrayList<>();
+
+        if (coords.isArray() && coords.size() > 0) {
+            JsonNode first = coords.get(0);
+            if (first.isObject()) {
+                for (JsonNode pt : coords) {
+                    points.add(pt.has("x") ? pt.get("x").asDouble() : 0);
+                    points.add(pt.has("y") ? pt.get("y").asDouble() : 0);
+                }
+            } else if (first.isArray()) {
+                for (JsonNode val : first) points.add(val.asDouble());
+            } else {
+                for (JsonNode val : coords) points.add(val.asDouble());
+            }
+        } else if (coords.has("points")) {
+            return extractPolygonPoints(coords.get("points"));
+        }
+
+        return points;
     }
 
     private double clamp(double value, double min, double max) {

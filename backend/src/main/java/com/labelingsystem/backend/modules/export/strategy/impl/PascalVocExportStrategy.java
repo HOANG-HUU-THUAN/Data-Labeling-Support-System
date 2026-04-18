@@ -18,6 +18,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -90,31 +91,60 @@ public class PascalVocExportStrategy implements ExportStrategy {
         StringBuilder objectsXml = new StringBuilder();
 
         for (Annotation anno : annotations) {
-            if (!"BOX".equals(anno.getType())) continue;
             if (anno.getLabel() == null) {
                 log.warn("[VOC] Bỏ qua annotation: label null");
                 continue;
             }
 
+            String type = anno.getType();
             JsonNode coords = anno.getCoordinates();
-            double x = coords.has("x") ? coords.get("x").asDouble() : 0;
-            double y = coords.has("y") ? coords.get("y").asDouble() : 0;
-            double w = coords.has("w") ? coords.get("w").asDouble() : 0;
-            double h = coords.has("h") ? coords.get("h").asDouble() : 0;
+            int xmin, ymin, xmax, ymax;
 
-            if (w <= 0 || h <= 0) {
-                log.warn("[VOC] Bỏ qua BBOX invalid (w={}, h={})", w, h);
+            if ("BOX".equals(type)) {
+                double x = coords.has("x") ? coords.get("x").asDouble() : 0;
+                double y = coords.has("y") ? coords.get("y").asDouble() : 0;
+                double w = coords.has("w") ? coords.get("w").asDouble() : 0;
+                double h = coords.has("h") ? coords.get("h").asDouble() : 0;
+
+                if (w <= 0 || h <= 0) {
+                    log.warn("[VOC] Bỏ qua BOX invalid (w={}, h={})", w, h);
+                    continue;
+                }
+
+                xmin = (int) Math.max(0, Math.min(x, imgWidth));
+                ymin = (int) Math.max(0, Math.min(y, imgHeight));
+                xmax = (int) Math.max(0, Math.min(x + w, imgWidth));
+                ymax = (int) Math.max(0, Math.min(y + h, imgHeight));
+
+            } else if ("POLYGON".equals(type)) {
+                List<Double> pts = extractPolygonPoints(coords);
+                if (pts.size() < 6) {
+                    log.warn("[VOC] Bỏ qua POLYGON: ít hơn 3 điểm");
+                    continue;
+                }
+
+                // Tính bounding box bao quanh polygon
+                double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE;
+                double maxX = -Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+                for (int i = 0; i < pts.size() - 1; i += 2) {
+                    minX = Math.min(minX, pts.get(i));
+                    minY = Math.min(minY, pts.get(i + 1));
+                    maxX = Math.max(maxX, pts.get(i));
+                    maxY = Math.max(maxY, pts.get(i + 1));
+                }
+
+                xmin = (int) Math.max(0, Math.min(minX, imgWidth));
+                ymin = (int) Math.max(0, Math.min(minY, imgHeight));
+                xmax = (int) Math.max(0, Math.min(maxX, imgWidth));
+                ymax = (int) Math.max(0, Math.min(maxY, imgHeight));
+
+            } else {
+                log.warn("[VOC] Bỏ qua annotation type không hỗ trợ: {}", type);
                 continue;
             }
 
-            // Clamp và tính xmin/ymin/xmax/ymax
-            int xmin = (int) Math.max(0, Math.min(x, imgWidth));
-            int ymin = (int) Math.max(0, Math.min(y, imgHeight));
-            int xmax = (int) Math.max(0, Math.min(x + w, imgWidth));
-            int ymax = (int) Math.max(0, Math.min(y + h, imgHeight));
-
             if (xmax <= xmin || ymax <= ymin) {
-                log.warn("[VOC] Bỏ qua BBOX sau khi clamp: hộp bị degenerate");
+                log.warn("[VOC] Bỏ qua annotation sau khi clamp: hộp bị degenerate");
                 continue;
             }
 
@@ -196,5 +226,30 @@ public class PascalVocExportStrategy implements ExportStrategy {
     private String stripExtension(String fileName) {
         int dotIndex = fileName.lastIndexOf(".");
         return dotIndex > 0 ? fileName.substring(0, dotIndex) : fileName;
+    }
+    /**
+     * Trích xuất flat list [x1,y1,x2,y2,...] từ JSON polygon.
+     * Hỗ trợ: [{x,y},...] | [x1,y1,...] | [[x1,y1,...]] | {points:[...]}
+     */
+    private List<Double> extractPolygonPoints(JsonNode coords) {
+        List<Double> points = new ArrayList<>();
+
+        if (coords.isArray() && coords.size() > 0) {
+            JsonNode first = coords.get(0);
+            if (first.isObject()) {
+                for (JsonNode pt : coords) {
+                    points.add(pt.has("x") ? pt.get("x").asDouble() : 0);
+                    points.add(pt.has("y") ? pt.get("y").asDouble() : 0);
+                }
+            } else if (first.isArray()) {
+                for (JsonNode val : first) points.add(val.asDouble());
+            } else {
+                for (JsonNode val : coords) points.add(val.asDouble());
+            }
+        } else if (coords.has("points")) {
+            return extractPolygonPoints(coords.get("points"));
+        }
+
+        return points;
     }
 }
