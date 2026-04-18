@@ -3,6 +3,7 @@ package com.labelingsystem.backend.modules.project.service.impl;
 import com.labelingsystem.backend.common.enums.ProjectStatus;
 import com.labelingsystem.backend.common.enums.ErrorCode;
 import com.labelingsystem.backend.common.exception.CustomAppException;
+import com.labelingsystem.backend.modules.audit.aspect.AuditAction;
 import com.labelingsystem.backend.modules.project.dto.request.ProjectCreateRequest;
 import com.labelingsystem.backend.modules.project.dto.request.ProjectUpdateRequest;
 import com.labelingsystem.backend.modules.project.dto.response.ProjectResponse;
@@ -40,6 +41,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional
+    @AuditAction("CREATE_PROJECT")
     public ProjectResponse createProject(ProjectCreateRequest request, String managerEmail) {
         User manager = userRepository.findByEmail(managerEmail)
                 .orElseThrow(() -> new CustomAppException(ErrorCode.USER_NOT_EXISTED));
@@ -54,7 +56,7 @@ public class ProjectServiceImpl implements ProjectService {
                 label.setName(labelReq.getName());
                 label.setColor(labelReq.getColor());
                 label.setProject(project);
-                
+
                 project.getLabels().add(label);
             }
         }
@@ -63,9 +65,9 @@ public class ProjectServiceImpl implements ProjectService {
         return projectMapper.toProjectResponse(project);
     }
 
-
     @Override
-    public PageResponse<ProjectResponse> getProjectsByManagerId(Long managerId, String name, String type, Pageable pageable) {
+    public PageResponse<ProjectResponse> getProjectsByManagerId(Long managerId, String name, String type,
+            Pageable pageable) {
         Specification<Project> spec = Specification.where(ProjectSpecification.hasCreatedBy(managerId))
                 .and(ProjectSpecification.hasName(name))
                 .and(ProjectSpecification.hasType(type));
@@ -91,8 +93,9 @@ public class ProjectServiceImpl implements ProjectService {
     // ==========================================
     @Override
     @Transactional
+    @AuditAction("UPDATE_PROJECT")
     public ProjectResponse updateProject(Long projectId, ProjectUpdateRequest request, Long userId, boolean isAdmin) {
-        
+
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new CustomAppException(ErrorCode.PROJECT_NOT_FOUND));
 
@@ -143,6 +146,7 @@ public class ProjectServiceImpl implements ProjectService {
     // ==========================================
     @Override
     @Transactional
+    @AuditAction("DELETE_PROJECT")
     public void deleteProject(Long projectId, Long userId, boolean isAdmin) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new CustomAppException(ErrorCode.PROJECT_NOT_FOUND));
@@ -161,9 +165,11 @@ public class ProjectServiceImpl implements ProjectService {
                 .orElseThrow(() -> new CustomAppException(ErrorCode.PROJECT_NOT_FOUND));
 
         // For now, allow manager, admin, annotator and reviewer access.
-        // In a real system, we should check if the user is actually assigned to this project.
-        // But since task assignment logic is still simple, we allow all authenticated roles for now.
-        
+        // In a real system, we should check if the user is actually assigned to this
+        // project.
+        // But since task assignment logic is still simple, we allow all authenticated
+        // roles for now.
+
         return projectMapper.toProjectResponse(project);
     }
 }

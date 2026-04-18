@@ -1,6 +1,7 @@
 package com.labelingsystem.backend.modules.task.service.impl;
 
 import com.labelingsystem.backend.common.enums.ErrorCode;
+import com.labelingsystem.backend.modules.audit.aspect.AuditAction;
 import com.labelingsystem.backend.common.exception.CustomAppException;
 import com.labelingsystem.backend.common.exception.ResourceNotFoundException;
 import com.labelingsystem.backend.modules.dataset.entity.Dataset;
@@ -57,7 +58,7 @@ public class TaskServiceImpl implements TaskService {
     public PageResponse<TaskResponse> getAllTasks(String status, Pageable pageable) {
         Specification<Task> spec = Specification.where(TaskSpecification.hasStatus(status));
         Page<Task> pageData = taskRepository.findAll(spec, pageable);
-        
+
         return PageResponse.<TaskResponse>builder()
                 .currentPage(pageData.getNumber())
                 .pageSize(pageData.getSize())
@@ -80,7 +81,7 @@ public class TaskServiceImpl implements TaskService {
     public TaskResponse updateTask(Long id, TaskUpdateRequest request) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
-        
+
         if (request.getName() != null) {
             task.setName(request.getName());
         }
@@ -100,16 +101,17 @@ public class TaskServiceImpl implements TaskService {
         } else if (request.getReviewerId() == null) {
             task.setAssignedReviewer(null);
         }
-        
+
         return mapToTaskResponse(taskRepository.save(task));
     }
 
     @Override
     @Transactional
+    @AuditAction("ASSIGN_TASK")
     public TaskResponse assignTask(Long id, Long assigneeId) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
-        
+
         if (assigneeId != null) {
             User user = userRepository.findById(assigneeId)
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -117,12 +119,13 @@ public class TaskServiceImpl implements TaskService {
         } else {
             task.setAssignedAnnotator(null);
         }
-        
+
         return mapToTaskResponse(taskRepository.save(task));
     }
 
     @Override
     @Transactional
+    @AuditAction("UPDATE_TASK_STATUS")
     public TaskResponse updateTaskStatus(Long id, String status) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
@@ -132,6 +135,7 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional
+    @AuditAction("DELETE_TASK")
     public void deleteTask(Long id) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
@@ -165,7 +169,8 @@ public class TaskServiceImpl implements TaskService {
                 .projectName(task.getProject().getName())
                 .datasetIds(datasetIds)
                 .assigneeId(task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getId() : null)
-                .assigneeUsername(task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getUsername() : null)
+                .assigneeUsername(
+                        task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getUsername() : null)
                 .reviewerId(task.getAssignedReviewer() != null ? task.getAssignedReviewer().getId() : null)
                 .reviewerUsername(task.getAssignedReviewer() != null ? task.getAssignedReviewer().getUsername() : null)
                 .status(task.getStatus())
@@ -178,19 +183,21 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional
+    @AuditAction("CREATE_BATCH_TASKS")
     public String createBatchTasks(Long projectId, TaskBatchCreateRequest request) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found with id " + projectId));
 
         Dataset dataset = datasetRepository.findById(request.getDatasetId())
-                .orElseThrow(() -> new ResourceNotFoundException("Dataset not found with id " + request.getDatasetId()));
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Dataset not found with id " + request.getDatasetId()));
 
         if (!dataset.getProject().getId().equals(projectId)) {
             throw new IllegalArgumentException("Dataset does not belong to the project");
         }
 
         List<Image> unassignedImages = imageRepository.findUnassignedImages(projectId, dataset.getId(), "PENDING");
-        
+
         if (unassignedImages.isEmpty()) {
             return "No pending images found to create tasks";
         }
@@ -213,7 +220,7 @@ public class TaskServiceImpl implements TaskService {
             List<Image> batchImages = unassignedImages.subList(i, end);
 
             User assignedAnnotator = annotators.get(taskCount % annotators.size());
-            
+
             User assignedReviewer = null;
             if (reviewers != null && !reviewers.isEmpty()) {
                 assignedReviewer = reviewers.get(taskCount % reviewers.size());
@@ -238,13 +245,14 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse< MyTaskResponse> getMyTasks(Long annotatorId, String projectName, String status, Pageable pageable) {
+    public PageResponse<MyTaskResponse> getMyTasks(Long annotatorId, String projectName, String status,
+            Pageable pageable) {
         Specification<Task> spec = Specification.where(TaskSpecification.hasAnnotatorId(annotatorId))
                 .and(TaskSpecification.hasProjectName(projectName))
                 .and(TaskSpecification.hasStatus(status));
-        
+
         Page<Task> pageData = taskRepository.findAll(spec, pageable);
-        
+
         return PageResponse.<MyTaskResponse>builder()
                 .currentPage(pageData.getNumber())
                 .pageSize(pageData.getSize())
@@ -256,13 +264,14 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<MyTaskResponse> getTasksForReview(Long reviewerId, String projectName, String status, Pageable pageable) {
+    public PageResponse<MyTaskResponse> getTasksForReview(Long reviewerId, String projectName, String status,
+            Pageable pageable) {
         Specification<Task> spec = Specification.where(TaskSpecification.hasReviewerId(reviewerId))
                 .and(TaskSpecification.hasProjectName(projectName))
                 .and(TaskSpecification.hasStatus(status));
-        
+
         Page<Task> pageData = taskRepository.findAll(spec, pageable);
-        
+
         return PageResponse.<MyTaskResponse>builder()
                 .currentPage(pageData.getNumber())
                 .pageSize(pageData.getSize())
@@ -283,19 +292,21 @@ public class TaskServiceImpl implements TaskService {
             }
         }
         return MyTaskResponse.builder()
-            .taskId(task.getId())
-            .projectId(task.getProject().getId())
-            .projectName(task.getProject().getName())
-            .status(task.getStatus())
-            .assignedAnnotatorId(task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getId() : null)
-            .assignedAnnotatorUsername(task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getUsername() : null)
-            .assignedReviewerId(task.getAssignedReviewer() != null ? task.getAssignedReviewer().getId() : null)
-            .assignedReviewerUsername(task.getAssignedReviewer() != null ? task.getAssignedReviewer().getUsername() : null)
-            .imageCount(task.getImages().size())
-            .errorCategory(errorCategory)
-            .comment(comment)
-            .createdAt(task.getCreatedAt())
-            .build();
+                .taskId(task.getId())
+                .projectId(task.getProject().getId())
+                .projectName(task.getProject().getName())
+                .status(task.getStatus())
+                .assignedAnnotatorId(task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getId() : null)
+                .assignedAnnotatorUsername(
+                        task.getAssignedAnnotator() != null ? task.getAssignedAnnotator().getUsername() : null)
+                .assignedReviewerId(task.getAssignedReviewer() != null ? task.getAssignedReviewer().getId() : null)
+                .assignedReviewerUsername(
+                        task.getAssignedReviewer() != null ? task.getAssignedReviewer().getUsername() : null)
+                .imageCount(task.getImages().size())
+                .errorCategory(errorCategory)
+                .comment(comment)
+                .createdAt(task.getCreatedAt())
+                .build();
     }
 
     @Override
@@ -313,7 +324,8 @@ public class TaskServiceImpl implements TaskService {
         if (!canAccess && task.getAssignedAnnotator() != null && task.getAssignedAnnotator().getId().equals(userId)) {
             canAccess = true;
         }
-        if (!canAccess && isReviewer && task.getAssignedReviewer() != null && task.getAssignedReviewer().getId().equals(userId)) {
+        if (!canAccess && isReviewer && task.getAssignedReviewer() != null
+                && task.getAssignedReviewer().getId().equals(userId)) {
             canAccess = true;
         }
 

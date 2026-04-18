@@ -1,6 +1,7 @@
 package com.labelingsystem.backend.modules.dataset.service.impl;
 
 import com.labelingsystem.backend.common.exception.ResourceNotFoundException;
+import com.labelingsystem.backend.modules.audit.aspect.AuditAction;
 import com.labelingsystem.backend.modules.dataset.entity.Dataset;
 import com.labelingsystem.backend.modules.dataset.entity.Image;
 import com.labelingsystem.backend.modules.dataset.repository.DatasetRepository;
@@ -52,6 +53,7 @@ public class DatasetServiceImpl implements DatasetService {
 
     @Override
     @Transactional
+    @AuditAction("DELETE_DATASET")
     public void deleteDataset(Long id) {
         Dataset dataset = datasetRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Dataset not found with id " + id));
@@ -77,6 +79,7 @@ public class DatasetServiceImpl implements DatasetService {
 
     @Override
     @Transactional
+    @AuditAction("UPLOAD_DATASET_BATCH")
     public String uploadBatch(Long projectId, String datasetName, MultipartFile[] images) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found with id " + projectId));

@@ -4,6 +4,8 @@ import com.labelingsystem.backend.common.enums.ErrorCode;
 import com.labelingsystem.backend.common.exception.CustomAppException;
 import com.labelingsystem.backend.common.exception.ResourceNotFoundException;
 import com.labelingsystem.backend.common.response.PageResponse;
+import com.labelingsystem.backend.modules.audit.aspect.AuditAction;
+import com.labelingsystem.backend.modules.user.dto.request.AssignRolesDTO;
 import com.labelingsystem.backend.modules.user.dto.request.UserCreationDTO;
 import com.labelingsystem.backend.modules.user.dto.request.UserUpdateDTO;
 import com.labelingsystem.backend.modules.user.dto.response.UserResponseDTO;
@@ -40,6 +42,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @AuditAction("CREATE_USER")
     public UserResponseDTO createUser(UserCreationDTO request) {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new CustomAppException(ErrorCode.USER_EXISTED);
@@ -66,6 +69,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @AuditAction("UPDATE_USER")
     public UserResponseDTO updateUser(Long id, UserUpdateDTO request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new CustomAppException(ErrorCode.USER_NOT_EXISTED));
@@ -87,6 +91,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @AuditAction("DELETE_USER")
     public void deleteUser(Long id) {
         // Soft delete
         User user = userRepository.findById(id)
@@ -123,6 +128,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @AuditAction("LOCK_USER")
     public void lockUser(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new CustomAppException(ErrorCode.USER_NOT_EXISTED));
@@ -132,6 +138,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @AuditAction("UNLOCK_USER")
     public void unlockUser(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new CustomAppException(ErrorCode.USER_NOT_EXISTED));
@@ -144,5 +151,22 @@ public class UserServiceImpl implements UserService {
         return userRepository.findByRoles_Name(roleName).stream()
                 .map(userMapper::toUserResponseDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    @AuditAction("ASSIGN_ROLES")
+    public UserResponseDTO assignRoles(Long id, AssignRolesDTO request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new CustomAppException(ErrorCode.USER_NOT_EXISTED));
+
+        Set<Role> newRoles = request.getRoles().stream()
+                .map(roleName -> roleRepository.findByName(roleName)
+                        .orElseThrow(() -> new CustomAppException(ErrorCode.ROLE_NOT_FOUND)))
+                .collect(Collectors.toSet());
+
+        user.setRoles(newRoles);
+        user = userRepository.save(user);
+        return userMapper.toUserResponseDTO(user);
     }
 }

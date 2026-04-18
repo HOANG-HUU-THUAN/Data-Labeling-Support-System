@@ -21,5 +21,6 @@ public class UserResponseDTO {
     String status;
     boolean deleted;
     LocalDateTime createdAt;
+    LocalDateTime updatedAt;
     Set<String> roles;
 }

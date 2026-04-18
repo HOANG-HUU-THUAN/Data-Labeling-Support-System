@@ -1,6 +1,7 @@
 package com.labelingsystem.backend.modules.export.service.impl;
 
 import com.labelingsystem.backend.common.utils.ZipUtils;
+import com.labelingsystem.backend.modules.audit.aspect.AuditAction;
 import com.labelingsystem.backend.modules.export.dto.ExportFormat;
 import com.labelingsystem.backend.modules.export.service.ExportService;
 import com.labelingsystem.backend.modules.export.strategy.ExportContext;
@@ -32,6 +33,7 @@ public class ExportServiceImpl implements ExportService {
     private final ExportStrategyFactory strategyFactory;
 
     @Override
+    @AuditAction("EXPORT_PROJECT_DATA")
     public byte[] exportProjectData(Long projectId, ExportFormat format) throws IOException {
         List<Task> approvedTasks = taskRepository.findByProjectIdAndStatus(projectId, "APPROVED");
         List<Label> labels = labelRepository.findByProjectId(projectId);

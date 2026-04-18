@@ -1,6 +1,7 @@
 package com.labelingsystem.backend.modules.review.service.impl;
 
 import com.labelingsystem.backend.common.enums.ErrorCode;
+import com.labelingsystem.backend.modules.audit.aspect.AuditAction;
 import com.labelingsystem.backend.common.exception.CustomAppException;
 import com.labelingsystem.backend.common.exception.ResourceNotFoundException;
 import com.labelingsystem.backend.modules.review.dto.request.ReviewRequest;
@@ -29,6 +30,7 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional
+    @AuditAction("SUBMIT_REVIEW")
     public ReviewResponse submitReview(ReviewRequest request, Long reviewerId, boolean isAdmin) {
         Task task = taskRepository.findById(request.getTaskId())
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + request.getTaskId()));

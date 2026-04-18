@@ -22,51 +22,50 @@ public class UserController {
 
     UserService userService;
 
-
-     
     @PostMapping
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse<UserResponseDTO> createUser(@RequestBody @Valid UserCreationDTO request) {
         return ApiResponse.success(userService.createUser(request));
     }
 
-     
     @GetMapping
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse<PageResponse<UserResponseDTO>> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.success(userService.getAllUsers(page, size));
     }
 
-     
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse<UserResponseDTO> getUser(@PathVariable Long id) {
         return ApiResponse.success(userService.getUser(id));
     }
 
-     
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse<UserResponseDTO> updateUser(
-            @PathVariable Long id, 
+            @PathVariable Long id,
             @RequestBody @Valid UserUpdateDTO request) {
         return ApiResponse.success(userService.updateUser(id, request));
     }
 
-     
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse<String> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return ApiResponse.success("User deleted successfully.");
     }
 
-     
     @PatchMapping("/{id}/lock")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse<String> lockUser(@PathVariable Long id) {
         userService.lockUser(id);
         return ApiResponse.success("User locked successfully.");
     }
 
-     
     @PatchMapping("/{id}/unlock")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse<String> unlockUser(@PathVariable Long id) {
         userService.unlockUser(id);
         return ApiResponse.success("User unlocked successfully.");
@@ -75,5 +74,13 @@ public class UserController {
     @GetMapping("/roles/{roleName}")
     public ApiResponse<java.util.List<UserResponseDTO>> getUsersByRole(@PathVariable String roleName) {
         return ApiResponse.success(userService.getUsersByRole(roleName));
+    }
+
+    @PutMapping("/{id}/roles")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ApiResponse<UserResponseDTO> assignRoles(
+            @PathVariable Long id,
+            @RequestBody @Valid com.labelingsystem.backend.modules.user.dto.request.AssignRolesDTO request) {
+        return ApiResponse.success(userService.assignRoles(id, request));
     }
 }
