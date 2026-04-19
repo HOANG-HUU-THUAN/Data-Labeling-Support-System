@@ -43,3 +43,14 @@ export const updateUser = async (id: number, data: UpdateUserRequest): Promise<U
   const response = await axiosInstance.put(`/v1/users/${id}`, data);
   return response.data.data;
 };
+
+export interface CreateUserRequest {
+  username: string;
+  email: string;
+  password: string;
+}
+
+export const createUser = async (data: CreateUserRequest): Promise<User> => {
+  const response = await axiosInstance.post(`/v1/users`, data);
+  return response.data.data;
+};

@@ -14,7 +14,6 @@ import {
   TableRow,
   Tooltip,
   Typography,
-  Stack,
   Fade,
   alpha,
   useTheme,
@@ -36,7 +35,6 @@ import type { TaskStatus, MyTask } from '../types/task';
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
   PENDING: 'Chưa làm',
-  IN_PROGRESS: 'Đang làm',
   IN_REVIEW: 'Đang duyệt',
   APPROVED: 'Đã duyệt',
   REJECTED: 'Từ chối',
@@ -44,7 +42,6 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
 
 const STATUS_COLOR: Record<TaskStatus, string> = {
   PENDING: '#9e9e9e',
-  IN_PROGRESS: '#ed6c02',
   IN_REVIEW: '#0288d1',
   APPROVED: '#2e7d32',
   REJECTED: '#d32f2f',

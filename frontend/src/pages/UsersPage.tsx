@@ -33,7 +33,8 @@ import {
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
-import { getAllUsers, lockUser, unlockUser, assignRoles, updateUser } from '../api/userApi';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import { getAllUsers, lockUser, unlockUser, assignRoles, updateUser, createUser } from '../api/userApi';
 import type { User } from '../types/user';
 import TextField from '@mui/material/TextField';
 import EditIcon from '@mui/icons-material/Edit';
@@ -56,8 +57,16 @@ export default function UsersPage() {
   const [tempRole, setTempRole] = useState<string>('');
   const [tempEmail, setTempEmail] = useState('');
   const [tempPassword, setTempPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [savingUser, setSavingUser] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // State for Create User
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newRole, setNewRole] = useState('ANNOTATOR');
+  const [creatingUser, setCreatingUser] = useState(false);
 
   const glassStyle = {
     background: 'rgba(255, 255, 255, 0.7)',
@@ -126,6 +135,32 @@ export default function UsersPage() {
     }
   };
 
+  const handleCreateUser = async () => {
+    if (!newUsername || !newEmail || !newPassword) return;
+    setCreatingUser(true);
+    try {
+      const newUser = await createUser({
+        username: newUsername,
+        email: newEmail,
+        password: newPassword
+      });
+
+      // Gán role ngay sau khi tạo (vì backend mặc định là ANNOTATOR)
+      await assignRoles(newUser.id, [newRole]);
+
+      setCreateDialogOpen(false);
+      setNewUsername('');
+      setNewEmail('');
+      setNewPassword('');
+      setNewRole('ANNOTATOR');
+      fetchUsers();
+    } catch (error) {
+      console.error('Lỗi khi tạo người dùng:', error);
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
   return (
     <Fade in timeout={800}>
       <Box sx={{ p: { xs: 2, md: 3 } }}>
@@ -133,10 +168,18 @@ export default function UsersPage() {
           <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', display: 'flex' }}>
             <PeopleAltIcon />
           </Box>
-          <Box>
+          <Box sx={{ flex: 1 }}>
             <Typography variant="h4" fontWeight="bold" color="primary.main">Quản lý người dùng</Typography>
             <Typography variant="body2" color="text.secondary">Quản trị viên có thể phân quyền và khóa tài khoản</Typography>
           </Box>
+          <Button
+            variant="contained"
+            startIcon={<PersonAddIcon />}
+            onClick={() => setCreateDialogOpen(true)}
+            sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 'bold', px: 3, height: 48 }}
+          >
+            Thêm người dùng
+          </Button>
         </Stack>
 
         {loading ? (
@@ -332,6 +375,94 @@ export default function UsersPage() {
               sx={{ borderRadius: 2, px: 4, fontWeight: 'bold' }}
             >
               {savingUser ? <CircularProgress size={20} color="inherit" /> : 'Lưu cập nhật'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Create User Dialog */}
+        <Dialog
+          open={createDialogOpen}
+          onClose={() => setCreateDialogOpen(false)}
+          fullWidth
+          maxWidth="sm"
+          PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+        >
+          <DialogTitle sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+            Tạo người dùng mới
+          </DialogTitle>
+          <DialogContent dividers sx={{ borderStyle: 'dashed' }}>
+            <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <TextField
+                label="Tên đăng nhập"
+                fullWidth
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              />
+
+              <TextField
+                label="Email"
+                fullWidth
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <EmailIcon color="action" fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              <TextField
+                label="Mật khẩu"
+                fullWidth
+                type={showPassword ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PasswordIcon color="action" fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              <FormControl fullWidth>
+                <InputLabel>Vai trò hệ thống</InputLabel>
+                <Select
+                  value={newRole}
+                  label="Vai trò hệ thống"
+                  onChange={(e) => setNewRole(e.target.value as string)}
+                  input={<OutlinedInput label="Vai trò hệ thống" sx={{ borderRadius: 2 }} />}
+                >
+                  <MenuItem value="ADMIN" sx={{ fontWeight: 'bold' }}>ADMIN</MenuItem>
+                  <MenuItem value="MANAGER" sx={{ fontWeight: 'bold' }}>MANAGER</MenuItem>
+                  <MenuItem value="ANNOTATOR" sx={{ fontWeight: 'bold' }}>ANNOTATOR</MenuItem>
+                  <MenuItem value="REVIEWER" sx={{ fontWeight: 'bold' }}>REVIEWER</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ p: 2, justifyContent: 'space-between' }}>
+            <Button onClick={() => setCreateDialogOpen(false)} sx={{ color: 'text.secondary', fontWeight: 'bold' }}>Hủy bỏ</Button>
+            <Button
+              variant="contained"
+              onClick={handleCreateUser}
+              disabled={creatingUser || !newUsername || !newEmail || !newPassword}
+              sx={{ borderRadius: 2, px: 4, fontWeight: 'bold' }}
+            >
+              {creatingUser ? <CircularProgress size={20} color="inherit" /> : 'Tạo người dùng'}
             </Button>
           </DialogActions>
         </Dialog>

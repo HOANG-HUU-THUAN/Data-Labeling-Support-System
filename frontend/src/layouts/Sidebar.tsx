@@ -35,8 +35,8 @@ interface MenuItem {
 const menuByRole: Record<User['role'], MenuItem[]> = {
   ADMIN: [
     { label: 'Người dùng', path: '/users', icon: <PeopleIcon /> },
-    { label: 'Nhật ký hệ thống', path: '/audit-logs', icon: <HistoryIcon /> },
-    { label: 'Cài đặt hệ thống', path: '/settings', icon: <SettingsIcon /> },
+    { label: 'Nhật ký', path: '/audit-logs', icon: <HistoryIcon /> },
+    { label: 'Cài đặt', path: '/settings', icon: <SettingsIcon /> },
   ],
   MANAGER: [
     { label: 'Dự án', path: '/projects', icon: <FolderIcon /> },
@@ -80,20 +80,7 @@ const Sidebar = () => {
       }}
     >
       <Toolbar />
-      <Box sx={{ px: 2, pt: 3, pb: 1 }}>
-        <Typography
-          variant="overline"
-          sx={{
-            color: 'text.secondary',
-            fontWeight: 800,
-            fontSize: '0.75rem',
-            letterSpacing: '0.1em',
-            ml: 1.5
-          }}
-        >
-          Hệ thống
-        </Typography>
-      </Box>
+
       <List sx={{ px: 1.5 }}>
         {menuItems.map((item) => {
           const isSelected = location.pathname === item.path ||
@@ -176,7 +163,7 @@ const Sidebar = () => {
           }}
         >
           <Typography variant="caption" color="text.secondary" fontWeight={600}>
-            Phần mềm gán nhãn v1.0
+            v1.0
           </Typography>
         </Paper>
       </Box>

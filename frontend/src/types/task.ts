@@ -28,7 +28,7 @@ export interface MyTask {
   createdAt: string;
 }
 
-export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED';
+export type TaskStatus = 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED';
 
 export interface AnnotationImage {
   id: number;
