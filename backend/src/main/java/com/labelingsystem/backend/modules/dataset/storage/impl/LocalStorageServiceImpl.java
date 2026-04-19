@@ -109,6 +109,40 @@ public class LocalStorageServiceImpl implements StorageService {
         }
     }
 
+    @Override
+    public long getTotalUsedSize() {
+        try {
+            Path rootPath = Paths.get(storageConfig.getLocalDir()).toAbsolutePath().normalize();
+            if (!Files.exists(rootPath)) {
+                return 0;
+            }
+            return Files.walk(rootPath)
+                    .filter(p -> p.toFile().isFile())
+                    .mapToLong(p -> p.toFile().length())
+                    .sum();
+        } catch (IOException e) {
+            log.error("Error calculating total storage size", e);
+            return 0;
+        }
+    }
+
+    @Override
+    public long getProjectUsedSize(Long projectId) {
+        try {
+            Path projectPath = Paths.get(storageConfig.getLocalDir()).resolve("project_" + projectId).toAbsolutePath().normalize();
+            if (!Files.exists(projectPath)) {
+                return 0;
+            }
+            return Files.walk(projectPath)
+                    .filter(p -> p.toFile().isFile())
+                    .mapToLong(p -> p.toFile().length())
+                    .sum();
+        } catch (IOException e) {
+            log.error("Error calculating project storage size for project {}", projectId, e);
+            return 0;
+        }
+    }
+
     private void generateThumbnail(Path source, Path target) {
         try {
             Files.createDirectories(target.getParent());

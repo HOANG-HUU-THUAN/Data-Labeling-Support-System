@@ -18,6 +18,7 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import LabelIcon from '@mui/icons-material/Label';
 import RateReviewIcon from '@mui/icons-material/RateReview';
 import HistoryIcon from '@mui/icons-material/History';
+import SettingsIcon from '@mui/icons-material/Settings';
 import useAuthStore from '../store/authStore';
 import type { User } from '../types/auth';
 
@@ -34,6 +35,7 @@ const menuByRole: Record<User['role'], MenuItem[]> = {
     { label: 'Trang chủ', path: '/', icon: <HomeIcon /> },
     { label: 'Người dùng', path: '/users', icon: <PeopleIcon /> },
     { label: 'Nhật ký hệ thống', path: '/audit-logs', icon: <HistoryIcon /> },
+    { label: 'Cài đặt hệ thống', path: '/settings', icon: <SettingsIcon /> },
   ],
   MANAGER: [
     { label: 'Trang chủ', path: '/', icon: <HomeIcon /> },

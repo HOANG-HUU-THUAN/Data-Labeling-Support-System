@@ -7,4 +7,6 @@ public interface StorageService {
     String store(MultipartFile file, String prefix);
     Resource loadAsResource(String filename);
     Resource loadThumbnailAsResource(String filename);
+    long getTotalUsedSize();
+    long getProjectUsedSize(Long projectId);
 }

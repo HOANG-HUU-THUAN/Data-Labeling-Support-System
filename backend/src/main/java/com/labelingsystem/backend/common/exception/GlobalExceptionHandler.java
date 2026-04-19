@@ -37,13 +37,13 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(errorCode.getStatusCode()).body(apiResponse);
     }
-    
-    @ExceptionHandler(value = ResourceNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handlingNotFoundException(ResourceNotFoundException exception) {
+
+    @ExceptionHandler(value = StorageLimitExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handlingStorageLimitException(StorageLimitExceededException exception) {
         ApiResponse<Void> apiResponse = new ApiResponse<>();
-        apiResponse.setCode(HttpStatus.NOT_FOUND.value());
+        apiResponse.setCode(HttpStatus.PAYLOAD_TOO_LARGE.value());
         apiResponse.setMessage(exception.getMessage());
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponse);
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(apiResponse);
     }
 
     @ExceptionHandler(value = AccessDeniedException.class)

@@ -16,6 +16,8 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.labelingsystem.backend.common.exception.StorageLimitExceededException;
+import com.labelingsystem.backend.modules.systemconfig.service.SystemConfigService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +35,7 @@ public class DatasetServiceImpl implements DatasetService {
     DatasetRepository datasetRepository;
     ImageRepository imageRepository;
     StorageService storageService;
+    SystemConfigService systemConfigService;
 
     @Override
     @Transactional(readOnly = true)
@@ -59,7 +62,7 @@ public class DatasetServiceImpl implements DatasetService {
                 .orElseThrow(() -> new ResourceNotFoundException("Dataset not found with id " + id));
         dataset.setDeleted(true);
         datasetRepository.save(dataset);
-        
+
         // Mark images as deleted too
         List<Image> images = imageRepository.findByDatasetId(id);
         images.forEach(i -> i.setDeleted(true));
@@ -84,34 +87,86 @@ public class DatasetServiceImpl implements DatasetService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found with id " + projectId));
 
+        // 1. Check total system storage limit
+        long totalUsed = storageService.getTotalUsedSize();
+        long uploadSize = 0;
+        for (MultipartFile file : images) {
+            uploadSize += file.getSize();
+        }
+
+        long limit = systemConfigService.getMaxStorageLimitBytes();
+        if (totalUsed + uploadSize > limit) {
+            throw new StorageLimitExceededException(
+                    "System storage limit exceeded. Current: " + formatBytes(totalUsed) + ", Upload: " + formatBytes(uploadSize) + ", Limit: " + formatBytes(limit));
+        }
+
+        // 1b. Check max files per upload
+        int maxFiles = systemConfigService.getMaxFilesPerUpload();
+        if (images.length > maxFiles) {
+            throw new RuntimeException("Số lượng file upload vượt quá giới hạn cho phép (" + maxFiles + " file)");
+        }
+
+        // 2. Check individual file size and type
+        long maxFileSize = systemConfigService.getMaxFileSizeNodes();
+        List<String> allowedTypes = systemConfigService.getAllowedFileTypes();
+        
+        for (MultipartFile file : images) {
+            if (file.getSize() > maxFileSize) {
+                throw new StorageLimitExceededException("File " + file.getOriginalFilename() + " exceeds maximum size limit of " + formatBytes(maxFileSize));
+            }
+            
+            String fileName = file.getOriginalFilename();
+            if (fileName != null) {
+                String ext = fileName.substring(fileName.lastIndexOf(".")).toLowerCase();
+                if (!allowedTypes.contains(ext)) {
+                    throw new RuntimeException("File type " + ext + " is not allowed. Allowed types: " + allowedTypes);
+                }
+            }
+        }
+
+        // 3. Check project storage limit
+        long projectUsed = storageService.getProjectUsedSize(projectId);
+        long projectLimit = systemConfigService.getMaxStoragePerProjectBytes();
+        if (projectUsed + uploadSize > projectLimit) {
+            throw new StorageLimitExceededException(
+                    "Project storage limit exceeded. Current: " + formatBytes(projectUsed) + ", Upload: " + formatBytes(uploadSize) + ", Limit: " + formatBytes(projectLimit));
+        }
+
         Dataset dataset = Dataset.builder()
                 .project(project)
                 .name(datasetName)
                 .deleted(false)
                 .build();
-        
+
         dataset = datasetRepository.save(dataset);
 
         String prefix = "project_" + projectId + "/dataset_" + dataset.getId();
-        
+
         List<Image> imageEntities = new ArrayList<>();
-        
+
         for (MultipartFile file : images) {
             String filePath = storageService.store(file, prefix);
-            
+
             Image img = Image.builder()
                     .dataset(dataset)
                     .filePath(filePath)
                     .status("PENDING")
                     .deleted(false)
                     .build();
-            
+
             imageEntities.add(img);
         }
-        
+
         imageRepository.saveAll(imageEntities);
-        
+
         return "Successfully uploaded " + images.length + " images to dataset '" + datasetName + "'";
+    }
+
+    private String formatBytes(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        int exp = (int) (Math.log(bytes) / Math.log(1024));
+        String pre = "KMGTPE".charAt(exp - 1) + "i";
+        return String.format("%.1f %sB", bytes / Math.pow(1024, exp), pre);
     }
 
     @Override

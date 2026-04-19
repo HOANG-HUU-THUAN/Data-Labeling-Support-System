@@ -50,6 +50,8 @@ const DatasetsPage = () => {
   const [selectedImage, setSelectedImage] = useState<DatasetImage | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [datasetName, setDatasetName] = useState('');
+  const [maxFiles, setMaxFiles] = useState<number | null>(null);
+  const [maxFileSize, setMaxFileSize] = useState<number | null>(null);
 
   // Load project list once
   useEffect(() => {
@@ -57,6 +59,14 @@ const DatasetsPage = () => {
       const list = res.data;
       setProjects(list);
       if (list.length > 0) setSelectedProjectId(list[0].id);
+    });
+
+    // Fetch system config for upload limit
+    import('../api/systemConfigApi').then(({ systemConfigApi }) => {
+      systemConfigApi.getStorageStatus().then(status => {
+        setMaxFiles(status.maxFilesPerUpload);
+        setMaxFileSize(status.maxFileSizeMB);
+      });
     });
   }, []);
 
@@ -90,6 +100,12 @@ const DatasetsPage = () => {
 
   const handleUpload = async () => {
     if (selectedProjectId === '' || previewFiles.length === 0 || !datasetName.trim()) return;
+
+    if (maxFiles !== null && previewFiles.length > maxFiles) {
+      alert(`Số lượng file upload vượt quá giới hạn cho phép (${maxFiles} file)`);
+      return;
+    }
+
     setUploading(true);
     try {
       await uploadDataset(selectedProjectId, previewFiles, datasetName.trim());
@@ -161,6 +177,18 @@ const DatasetsPage = () => {
             >
               {uploading ? <CircularProgress size={22} color="inherit" /> : 'Upload'}
             </Button>
+            <Box>
+              {maxFiles !== null && (
+                <Typography variant="body2" color="primary.main" fontWeight="500">
+                  Số lượng file upload được cho phép : <strong>{maxFiles}</strong>
+                </Typography>
+              )}
+              {maxFileSize !== null && (
+                <Typography variant="body2" color="primary.main" fontWeight="500">
+                  Kích thước file tối đa : <strong>{maxFileSize} MB</strong>
+                </Typography>
+              )}
+            </Box>
             {previewFiles.length > 0 && (
               <Typography variant="body2" color="text.secondary">
                 Đã chọn <strong>{previewFiles.length}</strong> ảnh

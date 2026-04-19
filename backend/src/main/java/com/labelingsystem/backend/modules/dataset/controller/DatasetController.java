@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "http://localhost:5173")
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
+@PreAuthorize("hasAuthority('MANAGER')")
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class DatasetController {
 

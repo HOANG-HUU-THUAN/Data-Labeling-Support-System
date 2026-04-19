@@ -19,6 +19,7 @@ import ProjectList from '../pages/ProjectListPage';
 import ProjectCreate from '../pages/ProjectCreate';
 import ProjectDetail from '../pages/ProjectDetail';
 import ProjectEditPage from '../pages/ProjectEditPage';
+import SettingsPage from '../pages/SettingsPage';
 
 const withLayout = (element: React.ReactNode) => (
   <MainLayout>{element}</MainLayout>
@@ -36,6 +37,7 @@ const AppRoutes = () => {
       {/* ADMIN only */}
       <Route path="/users" element={<ProtectedRoute roles={['ADMIN']}>{withLayout(<UsersPage />)}</ProtectedRoute>} />
       <Route path="/audit-logs" element={<ProtectedRoute roles={['ADMIN']}>{withLayout(<AuditLogsPage />)}</ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute roles={['ADMIN']}>{withLayout(<SettingsPage />)}</ProtectedRoute>} />
 
       {/* MANAGER only */}
       <Route path="/projects" element={<ProtectedRoute roles={['MANAGER', 'ANNOTATOR']}>{withLayout(<ProjectList />)}</ProtectedRoute>} />
