@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -103,12 +103,7 @@ const SettingsPage = () => {
     <Box sx={{ maxWidth: 1200, mx: 'auto', p: { xs: 2, md: 4 } }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 4 }}>
         <Box>
-          <Typography variant="h4" fontWeight="800" sx={{ 
-            background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            mb: 0.5
-          }}>
+          <Typography variant="h4" fontWeight="bold" color="primary.main" sx={{ mb: 1 }}>
             Hệ Thống & Cấu Hình
           </Typography>
           <Typography variant="body1" color="text.secondary">

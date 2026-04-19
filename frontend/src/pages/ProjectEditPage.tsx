@@ -11,17 +11,21 @@ import {
   Typography,
   MenuItem,
   IconButton,
-  Divider,
-  Grid
+  Fade,
+  alpha,
+  useTheme
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import SaveIcon from '@mui/icons-material/Save';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { getProjectById, updateProject } from '../api/projectApi';
 import type { Label } from '../types/project';
 
 export default function ProjectEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const theme = useTheme();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -32,7 +36,14 @@ export default function ProjectEditPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Load dữ liệu hiện tại của project vào form
+  const glassStyle = {
+    background: 'rgba(255, 255, 255, 0.7)',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.05)',
+    borderRadius: 4,
+  };
+
   useEffect(() => {
     getProjectById(Number(id))
       .then((project) => {
@@ -77,9 +88,9 @@ export default function ProjectEditPage() {
         description, 
         type, 
         guideline, 
-        labels: labels as any // API expects specific label request format
+        labels: labels as any 
       });
-      navigate('/projects');
+      navigate(`/projects/${id}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Lưu thất bại. Vui lòng thử lại.');
     } finally {
@@ -88,132 +99,120 @@ export default function ProjectEditPage() {
   };
 
   if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" mt={6}>
-        <CircularProgress />
-      </Box>
-    );
+    return <Box sx={{ py: 10, textAlign: 'center' }}><CircularProgress /></Box>;
   }
 
   return (
-    <Box maxWidth={600}>
-      <Typography variant="h5" fontWeight="bold" mb={3}>
-        Chỉnh sửa dự án
-      </Typography>
+    <Fade in timeout={800}>
+      <Box sx={{ maxWidth: 800, mx: 'auto', p: { xs: 2, md: 3 } }}>
+        <Stack direction="row" alignItems="center" spacing={2} mb={4}>
+          <IconButton onClick={() => navigate(`/projects/${id}`)} sx={{ bgcolor: 'white', boxShadow: 1 }}>
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography variant="h4" fontWeight="bold" color="primary.main">
+            Chỉnh sửa dự án
+          </Typography>
+        </Stack>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+        {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
 
-      <Paper variant="outlined" sx={{ p: 3 }}>
-        <Box component="form" onSubmit={handleSubmit}>
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, md: 8 }}>
-              <TextField
-                fullWidth
-                label="Tên dự án"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                margin="normal"
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                select
-                fullWidth
-                label="Loại dự án"
-                value={type}
-                onChange={(e) => setType(e.target.value as any)}
-                required
-                margin="normal"
-              >
-                <MenuItem value="IMAGE_CLASSIFICATION">Phân loại ảnh</MenuItem>
-                <MenuItem value="OBJECT_DETECTION">Nhận diện đối tượng</MenuItem>
-              </TextField>
-            </Grid>
-          </Grid>
-
-          <TextField
-            fullWidth
-            label="Mô tả"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            multiline
-            minRows={2}
-            margin="normal"
-          />
-
-          <TextField
-            fullWidth
-            label="Hướng dẫn (Guideline)"
-            value={guideline}
-            onChange={(e) => setGuideline(e.target.value)}
-            multiline
-            minRows={4}
-            margin="normal"
-          />
-
-          <Box mt={3} mb={1}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="subtitle1" fontWeight="bold">
-                Danh sách nhãn (Labels)
-              </Typography>
-              <Button startIcon={<AddIcon />} onClick={addLabel} size="small">
-                Thêm nhãn
-              </Button>
-            </Stack>
-            <Divider sx={{ my: 1 }} />
-            
-            <Stack spacing={2} mt={1}>
-              {labels.map((label, index) => (
-                <Stack key={index} direction="row" spacing={2} alignItems="center">
+        <Paper sx={{ ...glassStyle, p: 4 }}>
+          <Box component="form" onSubmit={handleSubmit}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 60%' } }}>
                   <TextField
-                    label="Tên nhãn"
-                    value={label.name}
-                    onChange={(e) => updateLabel(index, 'name', e.target.value)}
-                    required
-                    size="small"
-                    sx={{ flexGrow: 1 }}
+                    fullWidth label="Tên dự án"
+                    value={name} onChange={(e) => setName(e.target.value)}
+                    required sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                   />
+                </Box>
+                <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 30%' } }}>
                   <TextField
-                    type="color"
-                    label="Màu sắc"
-                    value={label.color}
-                    onChange={(e) => updateLabel(index, 'color', e.target.value)}
-                    required
-                    size="small"
-                    sx={{ width: 100 }}
-                  />
-                  <IconButton color="error" onClick={() => removeLabel(index)} size="small">
-                    <DeleteIcon />
-                  </IconButton>
+                    select fullWidth label="Loại hình"
+                    value={type} onChange={(e) => setType(e.target.value as any)}
+                    required sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                  >
+                    <MenuItem value="IMAGE_CLASSIFICATION">Phân loại ảnh</MenuItem>
+                    <MenuItem value="OBJECT_DETECTION">Nhận diện đối tượng</MenuItem>
+                  </TextField>
+                </Box>
+              </Box>
+
+              <Box>
+                <TextField
+                  fullWidth label="Mô tả dự án"
+                  value={description} onChange={(e) => setDescription(e.target.value)}
+                  multiline minRows={2}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
+              </Box>
+
+              <Box>
+                <TextField
+                  fullWidth label="Hướng dẫn (Guideline)"
+                  value={guideline} onChange={(e) => setGuideline(e.target.value)}
+                  multiline minRows={4}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
+              </Box>
+
+              <Box>
+                <Box sx={{ bgcolor: alpha(theme.palette.primary.main, 0.03), p: 3, borderRadius: 3, border: '1px dashed', borderColor: 'divider' }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Typography variant="subtitle1" fontWeight="bold">Quản lý nhãn (Labels)</Typography>
+                    <Button variant="outlined" startIcon={<AddIcon />} onClick={addLabel} size="small" sx={{ borderRadius: 2, textTransform: 'none' }}>
+                      Thêm nhãn
+                    </Button>
+                  </Stack>
+                  <Stack spacing={2}>
+                    {labels.map((label, index) => (
+                      <Fade in key={index}>
+                        <Stack direction="row" spacing={2} alignItems="center">
+                          <TextField
+                            fullWidth label={`Nhãn #${index + 1}`}
+                            value={label.name} onChange={(e) => updateLabel(index, 'name', e.target.value)}
+                            required size="small"
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: 'white' } }}
+                          />
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box
+                              component="input" type="color"
+                              value={label.color} onChange={(e: any) => updateLabel(index, 'color', e.target.value)}
+                              sx={{ width: 40, height: 40, border: '1px solid #ddd', borderRadius: 1, cursor: 'pointer', p: 0 }}
+                            />
+                          </Box>
+                          <IconButton color="error" onClick={() => removeLabel(index)} size="small" sx={{ bgcolor: 'white', '&:hover': { bgcolor: '#fff0f0' } }}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Stack>
+                      </Fade>
+                    ))}
+                  </Stack>
+                </Box>
+              </Box>
+
+              <Box>
+                <Stack direction="row" spacing={2} mt={2}>
+                  <Button 
+                    type="submit" variant="contained" disabled={saving} size="large"
+                    startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                    sx={{ borderRadius: 3, px: 6, textTransform: 'none', fontWeight: 'bold' }}
+                  >
+                    Lưu thay đổi
+                  </Button>
+                  <Button 
+                    variant="text" onClick={() => navigate(`/projects/${id}`)} disabled={saving} size="large"
+                    sx={{ borderRadius: 3, textTransform: 'none', color: 'text.secondary' }}
+                  >
+                    Hủy bỏ
+                  </Button>
                 </Stack>
-              ))}
-            </Stack>
+              </Box>
+            </Box>
           </Box>
-
-          <Stack direction="row" spacing={2} mt={5}>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={saving}
-              size="large"
-            >
-              {saving ? <CircularProgress size={24} color="inherit" /> : 'Lưu thay đổi'}
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => navigate(`/projects/${id}`)}
-              disabled={saving}
-            >
-              Hủy
-            </Button>
-          </Stack>
-        </Box>
-      </Paper>
-    </Box>
+        </Paper>
+      </Box>
+    </Fade>
   );
 }

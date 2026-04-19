@@ -195,7 +195,7 @@ const DashboardPage = () => {
   return (
     <Box sx={{ p: 4, maxWidth: 1400, mx: 'auto' }}>
       <Box mb={4}>
-        <Typography variant="h4" fontWeight={800} gutterBottom sx={{ letterSpacing: '-0.5px' }}>
+        <Typography variant="h4" fontWeight="bold" color="primary.main" sx={{ mb: 1 }}>
           Dashboard Hệ Thống
         </Typography>
         <Typography variant="body1" color="text.secondary">

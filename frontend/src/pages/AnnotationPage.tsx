@@ -15,6 +15,11 @@ import {
   DialogActions,
   TextField,
   MenuItem,
+  Stack,
+  IconButton,
+  Chip,
+  alpha,
+  useTheme,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
@@ -61,6 +66,14 @@ const CORNER_HANDLES = [
 ];
 
 const AnnotationPage = () => {
+  const theme = useTheme();
+  const glassStyle = {
+    background: 'rgba(255, 255, 255, 0.7)',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.05)',
+    borderRadius: 4,
+  };
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
 
@@ -150,7 +163,11 @@ const AnnotationPage = () => {
     const id = Number(taskId);
     if (isNaN(id)) return;
     Promise.all([getTaskImages(id), getTaskById(id)]).then(([imgs, t]) => {
-      setImages(imgs);
+      const formattedImgs = imgs.map(img => ({
+        ...img,
+        thumbnailUrl: img.thumbnailUrl || img.url // fallback
+      }));
+      setImages(formattedImgs);
       setTask(t);
       if (t) {
         getProjectById(t.projectId).then(p => setProject(p ?? null));
@@ -163,8 +180,8 @@ const AnnotationPage = () => {
         const counts: Record<number, number> = {};
         results.forEach((anns, i) => { counts[imgs[i].id] = anns.length; });
         setAnnotationCounts(counts);
-        if (imgs.length > 0) {
-          setSelectedImage(imgs[0]);
+        if (formattedImgs.length > 0) {
+          setSelectedImage(formattedImgs[0]);
           setAnnotations(results[0] ?? []);
         }
       });
@@ -456,20 +473,22 @@ const AnnotationPage = () => {
   return (
     <Box display="flex" flexDirection="column" height="100%">
       {/* HEADER */}
-      <Box display="flex" alignItems="center" gap={2} mb={1}>
+      <Box display="flex" alignItems="center" gap={2} mb={2} sx={{ py: 1, px: 2, bgcolor: alpha(theme.palette.background.paper, 0.4), backdropFilter: 'blur(8px)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.2)' }}>
         <Button
           startIcon={<ArrowBackIcon />}
           variant="text"
           onClick={() => {
             navigate(isReviewerOrAdmin ? '/review' : '/my-tasks');
           }}
+          sx={{ borderRadius: 2, fontWeight: 'bold' }}
         >
-          Quay lại
+          Thoát
         </Button>
-        <Typography variant="h5" fontWeight="bold">
-          Workspace gán nhãn — Task #{taskId}
+        <Typography variant="h6" fontWeight="bold" sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box component="span" sx={{ color: 'primary.main', opacity: 0.7 }}>Workspace</Box>
+          <Box component="span" sx={{ px: 1, py: 0.2, bgcolor: alpha(theme.palette.primary.main, 0.1), borderRadius: 1 }}>Task #{taskId}</Box>
         </Typography>
-        <Box ml="auto" display="flex" alignItems="center" gap={1}>
+        <Box display="flex" alignItems="center" gap={1}>
           {saving && (
             <Box display="flex" alignItems="center" gap={1} mr={1}>
               <CircularProgress size={14} />
@@ -477,45 +496,43 @@ const AnnotationPage = () => {
             </Box>
           )}
           {!isReadOnly && (
-            <>
+            <Stack direction="row" spacing={0.5}>
               <Tooltip title="Hoàn tác (Ctrl+Z)">
                 <span>
-                  <Button
+                  <IconButton
                     size="small"
-                    variant="outlined"
                     disabled={!canUndo}
                     onClick={() => { if (historyIndexRef.current > 0) applySnapshot(historyIndexRef.current - 1); }}
-                    sx={{ minWidth: 36, px: 1 }}
+                    sx={{ bgcolor: 'background.paper', boxShadow: 1, border: '1px solid', borderColor: 'divider' }}
                   >
                     <UndoIcon fontSize="small" />
-                  </Button>
+                  </IconButton>
                 </span>
               </Tooltip>
               <Tooltip title="Làm lại (Ctrl+Y)">
                 <span>
-                  <Button
+                  <IconButton
                     size="small"
-                    variant="outlined"
                     disabled={!canRedo}
                     onClick={() => { if (historyIndexRef.current < historyRef.current.length - 1) applySnapshot(historyIndexRef.current + 1); }}
-                    sx={{ minWidth: 36, px: 1 }}
+                    sx={{ bgcolor: 'background.paper', boxShadow: 1, border: '1px solid', borderColor: 'divider' }}
                   >
                     <RedoIcon fontSize="small" />
-                  </Button>
+                  </IconButton>
                 </span>
               </Tooltip>
-            </>
+            </Stack>
           )}
           {!loading && images.length > 0 && (
             isReviewerOrAdmin ? (
-              <>
+              <Stack direction="row" spacing={1}>
                 <Button
                   variant="outlined"
                   color="error"
                   disabled={submitting || saving}
                   onClick={() => setOpenRejectDialog(true)}
                   startIcon={<CloseIcon />}
-                  sx={{ ml: 1, px: 2 }}
+                  sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
                 >
                   Từ chối
                 </Button>
@@ -525,34 +542,32 @@ const AnnotationPage = () => {
                   disabled={submitting || saving}
                   onClick={handleApproveTask}
                   startIcon={<CheckIcon />}
-                  sx={{ ml: 1, px: 2 }}
+                  sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(46, 125, 50, 0.3)' }}
                 >
                   {submitting ? <CircularProgress size={18} color="inherit" /> : 'Phê duyệt'}
                 </Button>
-              </>
+              </Stack>
             ) : (
               <Button
                 variant="contained"
                 color="primary"
                 disabled={submitting || saving}
                 onClick={handleSubmit}
-                sx={{ ml: 1 }}
+                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold', px: 4, boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)' }}
               >
-                {submitting ? <CircularProgress size={18} color="inherit" /> : 'Nộp task'}
+                {submitting ? <CircularProgress size={18} color="inherit" /> : 'Nộp Task'}
               </Button>
             )
           )}
-          <Tooltip title="Xem hướng dẫn (Guideline)">
-            <Button
+          <Tooltip title="Xem hướng dẫn gán nhãn">
+            <IconButton
               size="small"
-              variant="outlined"
               color="info"
               onClick={() => setOpenGuidelineDialog(true)}
-              startIcon={<HelpOutlineIcon fontSize="small" />}
-              sx={{ minWidth: 120, px: 2, ml: 1 }}
+              sx={{ ml: 1, bgcolor: alpha(theme.palette.info.main, 0.1) }}
             >
-              Hướng dẫn
-            </Button>
+              <HelpOutlineIcon fontSize="medium" />
+            </IconButton>
           </Tooltip>
         </Box>
       </Box>
@@ -560,106 +575,91 @@ const AnnotationPage = () => {
       {task?.status === 'REJECTED' && (
         <Alert 
           severity="error" 
-          variant="filled"
-          sx={{ mb: 1 }}
+          variant="outlined"
+          sx={{ mb: 2, borderRadius: 2, bgcolor: alpha(theme.palette.error.main, 0.02) }}
         >
-          <AlertTitle>Task bị từ chối</AlertTitle>
-          <Typography variant="body2">
-            <strong>Loại lỗi:</strong> {task.errorCategory || '—'}
-          </Typography>
-          <Typography variant="body2">
-            <strong>Ghi chú từ reviewer:</strong> {task.comment || '—'}
-          </Typography>
+          <AlertTitle sx={{ fontWeight: 'bold' }}>Thông báo: Task bị từ chối</AlertTitle>
+          <Typography variant="body2"><strong>Lý do:</strong> {task.errorCategory || '—'} | <strong>Ghi chú từ reviewer:</strong> {task.comment || '—'}</Typography>
         </Alert>
       )}
 
       {/* TOOLBAR */}
       {!loading && !isReadOnly && (
-        <AnnotationToolbar
-          labels={labels}
-          selectedLabel={selectedLabel}
-          onLabelChange={setSelectedLabel}
-          tool={tool}
-          onToolChange={(t) => {
-            setTool(t);
-            setActivePoints([]);
-            setPreviewBox(null);
-          }}
-        />
+        <Paper sx={{ ...glassStyle, p: 1.5, mb: 2, display: 'flex', alignItems: 'center' }}>
+          <AnnotationToolbar
+            labels={labels}
+            selectedLabel={selectedLabel}
+            onLabelChange={setSelectedLabel}
+            tool={tool}
+            onToolChange={(t) => {
+              setTool(t);
+              setActivePoints([]);
+              setPreviewBox(null);
+            }}
+          />
+        </Paper>
       )}
 
       {submitError && (
-        <Alert severity="error" onClose={() => setSubmitError(null)} sx={{ mb: 1 }}>
+        <Alert severity="error" variant="filled" onClose={() => setSubmitError(null)} sx={{ mb: 2, borderRadius: 2 }}>
           {submitError}
         </Alert>
       )}
 
-      <Divider sx={{ mb: 1 }} />
-
       {loading ? (
-        <Box display="flex" justifyContent="center" mt={8}>
-          <CircularProgress />
-        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>
       ) : images.length === 0 ? (
-        <Typography color="text.secondary" mt={4} textAlign="center">
-          Task này không có ảnh nào
-        </Typography>
+        <Typography color="text.secondary" sx={{ textAlign: 'center', py: 10 }}>Không có mục dữ liệu nào để hiển thị.</Typography>
       ) : (
-        <Box display="flex" gap={2} flex={1} minHeight={0}>
+        <Box sx={{ display: 'flex', gap: 2, flex: 1, minHeight: 0 }}>
           {/* LEFT PANEL — thumbnail list */}
           <Paper
-            variant="outlined"
             sx={{
-              width: 160,
+              ...glassStyle,
+              width: 180,
               flexShrink: 0,
               overflowY: 'auto',
-              p: 1,
+              p: 1.5,
               display: 'flex',
               flexDirection: 'column',
-              gap: 1,
+              gap: 1.5,
             }}
           >
-            <Typography variant="overline" color="text.secondary" px={0.5}>
-              Ảnh ({images.length})
+            <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main' }} />
+              Dữ liệu nguồn ({images.length})
             </Typography>
-            <Divider />
+            <Divider sx={{ borderStyle: 'dashed' }} />
             {images.map((img) => (
               <Box
                 key={img.id}
                 onClick={() => { setAnnotations([]); setSelectedImage(img); }}
-                sx={{ position: 'relative', cursor: 'pointer' }}
+                sx={{ position: 'relative', cursor: 'pointer', transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.02)' } }}
               >
                 <ImageWithAuth
                   src={img.thumbnailUrl}
                   alt={img.name}
                   sx={{
                     width: '100%',
-                    height: 90,
+                    height: 100,
                     objectFit: 'cover',
-                    borderRadius: 1,
+                    borderRadius: 2,
                     display: 'block',
-                    border: '2px solid',
+                    border: '3px solid',
                     borderColor: selectedImage?.id === img.id ? 'primary.main' : 'transparent',
-                    transition: 'border-color 0.15s',
-                    '&:hover': { opacity: 0.85 },
+                    boxShadow: selectedImage?.id === img.id ? 4 : 0,
                   }}
                 />
                 {(annotationCounts[img.id] ?? 0) > 0 && (
-                  <Box
+                  <Chip
+                    label={annotationCounts[img.id]}
+                    size="small"
+                    color="primary"
                     sx={{
-                      position: 'absolute',
-                      bottom: 4,
-                      right: 4,
-                      bgcolor: 'primary.main',
-                      color: '#fff',
-                      fontSize: 10,
-                      borderRadius: '8px',
-                      px: 0.6,
-                      lineHeight: 1.6,
+                      position: 'absolute', top: 5, right: 5, height: 20, fontSize: 10, fontWeight: 'bold',
+                      boxShadow: 2, pointerEvents: 'none'
                     }}
-                  >
-                    {annotationCounts[img.id]}
-                  </Box>
+                  />
                 )}
               </Box>
             ))}
@@ -667,13 +667,14 @@ const AnnotationPage = () => {
 
           {/* RIGHT PANEL — annotation canvas */}
           <Paper
-            variant="outlined"
             sx={{
+              ...glassStyle,
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              p: 2,
+              position: 'relative',
+              p: 1,
             }}
           >
 

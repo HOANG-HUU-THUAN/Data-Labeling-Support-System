@@ -16,12 +16,18 @@ import {
   Select,
   Stack,
   Typography,
+  Fade,
+  alpha,
+  useTheme,
+  IconButton,
+  Grid
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import { assignTask, deleteTask, getTaskById, updateTaskStatus } from '../api/taskApi';
 import { getImagesByDatasetId } from '../api/datasetApi';
 import type { Task, TaskStatus } from '../types/task';
@@ -31,8 +37,6 @@ import ImageWithAuth from '../components/ImageWithAuth';
 const formatImageUrl = (url: string) => {
   if (!url) return '';
   if (url.startsWith('http')) return url;
-  // Backend returns /api/v1/... but axiosInstance baseURL is .../api
-  // Strip /api to avoid duplication
   return url.replace(/^\/api/, '');
 };
 
@@ -44,39 +48,42 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
   REJECTED: 'Từ chối',
 };
 
-const STATUS_COLOR: Record<TaskStatus, 'default' | 'warning' | 'info' | 'success' | 'error'> = {
-  PENDING: 'default',
-  IN_PROGRESS: 'warning',
-  IN_REVIEW: 'info',
-  APPROVED: 'success',
-  REJECTED: 'error',
+const STATUS_COLOR: Record<TaskStatus, string> = {
+  PENDING: '#9e9e9e',
+  IN_PROGRESS: '#ed6c02',
+  IN_REVIEW: '#0288d1',
+  APPROVED: '#2e7d32',
+  REJECTED: '#d32f2f',
 };
 
 const InfoRow = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <Stack direction="row" spacing={2} alignItems="center">
-    <Typography variant="body2" color="text.secondary" minWidth={140}>
+  <Stack direction="row" spacing={2} alignItems="center" sx={{ py: 1 }}>
+    <Typography variant="body2" color="text.secondary" sx={{ minWidth: 140, fontWeight: 'bold' }}>
       {label}
     </Typography>
-    {children}
+    <Box sx={{ flex: 1 }}>{children}</Box>
   </Stack>
 );
-
-// Annotators from mock
-const ANNOTATORS = [
-  { id: 3, name: 'Annotator' },
-];
 
 const TaskDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const theme = useTheme();
 
   const [task, setTask] = useState<Task | null | undefined>(undefined);
   const [taskImages, setTaskImages] = useState<DatasetImage[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
-  const [assigning, setAssigning] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [showImages, setShowImages] = useState(false);
+
+  const glassStyle = {
+    background: 'rgba(255, 255, 255, 0.7)',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.05)',
+    borderRadius: 4,
+  };
 
   const handleStatusChange = (newStatus: TaskStatus) => {
     if (!task || newStatus === task.status) return;
@@ -87,19 +94,9 @@ const TaskDetailPage = () => {
     });
   };
 
-  const handleAssign = (newAssigneeId: number | '') => {
-    if (!task) return;
-    const resolved = newAssigneeId === '' ? undefined : (newAssigneeId as number);
-    setAssigning(true);
-    assignTask(task.id, resolved).then((updated) => {
-      setTask(updated);
-      setAssigning(false);
-    });
-  };
-
   const handleDelete = async () => {
     if (!task) return;
-    if (!window.confirm('Bạn có chắc muốn xóa task này?')) return;
+    if (!window.confirm('Xác nhận xóa task này?')) return;
     setDeleting(true);
     await deleteTask(task.id);
     navigate('/tasks');
@@ -110,19 +107,16 @@ const TaskDetailPage = () => {
     let cancelled = false;
     getTaskById(Number(id)).then((t) => {
       if (cancelled) return;
-      const found = t ?? null;
-      setTask(found);
-      if (found && found.datasetIds.length > 0) {
+      setTask(t ?? null);
+      if (t && t.datasetIds.length > 0) {
         setLoadingImages(true);
-        Promise.all(found.datasetIds.map(id => getImagesByDatasetId(id)))
+        Promise.all(t.datasetIds.map(dsId => getImagesByDatasetId(dsId)))
           .then((results) => {
             if (cancelled) return;
             setTaskImages(results.flat());
-            setLoadingImages(false);
           })
-          .catch(() => {
-            if (cancelled) return;
-            setLoadingImages(false);
+          .finally(() => {
+            if (!cancelled) setLoadingImages(false);
           });
       }
     });
@@ -130,194 +124,140 @@ const TaskDetailPage = () => {
   }, [id]);
 
   if (task === undefined) {
-    return (
-      <Box display="flex" justifyContent="center" mt={8}>
-        <CircularProgress />
-      </Box>
-    );
+    return <Box sx={{ py: 10, textAlign: 'center' }}><CircularProgress /></Box>;
   }
 
   if (task === null) {
     return (
-      <Box mt={6} textAlign="center">
-        <Typography variant="h6" color="text.secondary">
-          Không tìm thấy task
-        </Typography>
-        <Button startIcon={<ArrowBackIcon />} sx={{ mt: 2 }} onClick={() => navigate('/tasks')}>
-          Quay lại
-        </Button>
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <Typography variant="h6" color="text.secondary">Không tìm thấy dữ liệu task.</Typography>
+        <Button startIcon={<ArrowBackIcon />} sx={{ mt: 2 }} onClick={() => navigate('/tasks')}>Danh sách Task</Button>
       </Box>
     );
   }
 
   return (
-    <Box maxWidth={700}>
-      <Stack direction="row" alignItems="center" spacing={1} mb={3}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          variant="text"
-          onClick={() => navigate('/tasks')}
-        >
-          Quay lại
-        </Button>
-        <Typography variant="h5" fontWeight="bold" flex={1}>
-          Chi tiết task
-        </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<EditIcon />}
-          onClick={() => navigate(`/tasks/${task.id}/edit`)}
-        >
-          Chỉnh sửa
-        </Button>
-        <Button
-          variant="outlined"
-          color="error"
-          startIcon={deleting ? <CircularProgress size={16} color="error" /> : <DeleteIcon />}
-          disabled={deleting}
-          onClick={handleDelete}
-        >
-          Xóa
-        </Button>
-      </Stack>
-
-      <Paper variant="outlined" sx={{ p: 3 }}>
-        <Stack spacing={2}>
-          <InfoRow label="Tên task">
-            <Typography variant="body1" fontWeight={500}>
-              {task.name}
-            </Typography>
-          </InfoRow>
-
-          <InfoRow label="Project ID">
-            <Typography variant="body1">{task.projectId}</Typography>
-          </InfoRow>
-
-          <InfoRow label="Annotator">
-            <Typography variant="body1">
-              {task.assigneeUsername || (task.assigneeId ? `User #${task.assigneeId}` : '—')}
-            </Typography>
-          </InfoRow>
-
-          <InfoRow label="Reviewer">
-            <Typography variant="body1">
-              {task.reviewerUsername || (task.reviewerId ? `User #${task.reviewerId}` : '—')}
-            </Typography>
-          </InfoRow>
-
-          <InfoRow label="Trạng thái">
-            <Chip
-              label={STATUS_LABEL[task.status]}
-              color={STATUS_COLOR[task.status]}
-              size="small"
-            />
-          </InfoRow>
-          
-          {task.status === 'REJECTED' && (
-            <Box sx={{ bgcolor: 'error.light', p: 2, borderRadius: 1, color: 'error.contrastText' }}>
-              <Typography variant="subtitle2" fontWeight="bold">Lý do từ chối:</Typography>
-              <Typography variant="body2">Loại lỗi: <strong>{task.errorCategory || '—'}</strong></Typography>
-              <Typography variant="body2">Ghi chú: {task.comment || '—'}</Typography>
-            </Box>
-          )}
-
-          <Divider />
-
-          {/* STATUS UPDATE SECTION */}
-          <Box>
-            <Typography variant="body2" fontWeight={500} mb={1}>
-              Cập nhật trạng thái
-            </Typography>
-            <Stack direction="row" alignItems="center" spacing={1}>
-              <FormControl size="small" sx={{ minWidth: 200 }} disabled={updatingStatus}>
-                <InputLabel>Trạng thái</InputLabel>
-                <Select
-                  value={task.status}
-                  label="Trạng thái"
-                  onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
-                >
-                  {(Object.keys(STATUS_LABEL) as TaskStatus[]).map((s) => (
-                    <MenuItem key={s} value={s}>{STATUS_LABEL[s]}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              {updatingStatus && <CircularProgress size={16} />}
-            </Stack>
+    <Fade in timeout={800}>
+      <Box sx={{ maxWidth: 900, mx: 'auto', p: { xs: 2, md: 3 } }}>
+        <Stack direction="row" alignItems="center" spacing={2} mb={4}>
+          <IconButton onClick={() => navigate('/tasks')} sx={{ bgcolor: 'white', boxShadow: 1 }}>
+            <ArrowBackIcon />
+          </IconButton>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h4" fontWeight="bold" color="primary.main">Chi tiết Task</Typography>
+            <Typography variant="body2" color="text.secondary">Quản lý trạng thái và phân bổ nhân sự</Typography>
           </Box>
-
-          <Divider />
-          {/* <Box>
-            <Typography variant="body2" fontWeight={500} mb={1}>
-              Gán người thực hiện
-            </Typography>
-            <FormControl size="small" sx={{ minWidth: 220 }} disabled={assigning}>
-              <InputLabel>Annotator</InputLabel>
-              <Select
-                value={task.assigneeId ?? ''}
-                label="Annotator"
-                onChange={(e) => handleAssign(e.target.value as number | '')}
-              >
-                <MenuItem value="">— Không gán —</MenuItem>
-                {ANNOTATORS.map((u) => (
-                  <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            {assigning && <CircularProgress size={16} sx={{ ml: 1, verticalAlign: 'middle' }} />}
-          </Box> */}
-
-          <Divider />
-
-          <Box>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
-              <Typography variant="body2" color="text.secondary">
-                Ảnh từ dataset ({taskImages.length} ảnh)
-              </Typography>
-              <Button
-                size="small"
-                onClick={() => setShowImages(!showImages)}
-                startIcon={showImages ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-              >
-                {showImages ? 'Ẩn ảnh' : 'Hiện ảnh'}
-              </Button>
-            </Stack>
-
-            {showImages && (
-              <>
-                {loadingImages ? (
-                  <CircularProgress size={20} />
-                ) : taskImages.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary">
-                    Không có ảnh nào trong các dataset được chọn
-                  </Typography>
-                ) : (
-                  <ImageList cols={4} gap={8}>
-                    {taskImages.map((img) => (
-                      <ImageListItem key={img.id}>
-                        <ImageWithAuth
-                          src={formatImageUrl(img.thumbnail)}
-                          alt={img.name}
-                          sx={{
-                            height: 120,
-                            width: '100%',
-                            objectFit: 'cover',
-                            borderRadius: 1,
-                          }}
-                        />
-                        <ImageListItemBar
-                          title={img.name}
-                          sx={{ borderRadius: '0 0 4px 4px' }}
-                        />
-                      </ImageListItem>
-                    ))}
-                  </ImageList>
-                )}
-              </>
-            )}
-          </Box>
+          <Stack direction="row" spacing={1}>
+            <Button variant="contained" startIcon={<EditIcon />} onClick={() => navigate(`/tasks/${task.id}/edit`)} sx={{ borderRadius: 2, textTransform: 'none' }}>Sửa</Button>
+            <Button variant="outlined" color="error" startIcon={deleting ? <CircularProgress size={16} color="error" /> : <DeleteIcon />} disabled={deleting} onClick={handleDelete} sx={{ borderRadius: 2, textTransform: 'none' }}>Xóa</Button>
+          </Stack>
         </Stack>
-      </Paper>
-    </Box>
+
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={7}>
+            <Paper sx={{ ...glassStyle, p: 4 }}>
+              <Typography variant="h6" fontWeight="bold" mb={3} display="flex" alignItems="center" gap={1}>
+                <AssignmentIndIcon color="primary" /> Thông tin cơ bản
+              </Typography>
+              <Stack spacing={1}>
+                <InfoRow label="Tên Task"><Typography variant="body1" fontWeight="bold">{task.name}</Typography></InfoRow>
+                <InfoRow label="Dự án">
+                  <Chip label={task.projectName || `Dự án #${task.projectId}`} size="small" variant="outlined" sx={{ fontWeight: 'bold' }} />
+                </InfoRow>
+                <InfoRow label="Annotator">
+                  <Typography variant="body1">{task.assigneeUsername || 'Chưa gán'}</Typography>
+                </InfoRow>
+                <InfoRow label="Reviewer">
+                  <Typography variant="body1">{task.reviewerUsername || 'Chưa gán'}</Typography>
+                </InfoRow>
+                <InfoRow label="Trạng thái">
+                  <Chip
+                    label={STATUS_LABEL[task.status]}
+                    sx={{ bgcolor: alpha(STATUS_COLOR[task.status], 0.1), color: STATUS_COLOR[task.status], fontWeight: 'bold', borderRadius: 1.5 }}
+                  />
+                </InfoRow>
+              </Stack>
+
+              {task.status === 'REJECTED' && (
+                <Box sx={{ mt: 3, p: 2, bgcolor: alpha(theme.palette.error.main, 0.05), borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.error.main, 0.2) }}>
+                  <Typography variant="subtitle2" fontWeight="bold" color="error.main">Lý do từ chối:</Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}><strong>Loại lỗi:</strong> {task.errorCategory || '—'}</Typography>
+                  <Typography variant="body2"><strong>Ghi chú:</strong> {task.comment || '—'}</Typography>
+                </Box>
+              )}
+            </Paper>
+          </Grid>
+
+          <Grid item xs={12} md={5}>
+            <Paper sx={{ ...glassStyle, p: 4, height: '100%' }}>
+              <Typography variant="h6" fontWeight="bold" mb={3}>Hành động nhanh</Typography>
+              <Stack spacing={3}>
+                <Box>
+                  <Typography variant="body2" fontWeight="bold" mb={1} color="text.secondary">Thay đổi trạng thái:</Typography>
+                  <FormControl fullWidth size="small" disabled={updatingStatus}>
+                    <Select
+                      value={task.status}
+                      onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
+                      sx={{ borderRadius: 2, bgcolor: 'white' }}
+                    >
+                      {(Object.keys(STATUS_LABEL) as TaskStatus[]).map((s) => (
+                        <MenuItem key={s} value={s}>{STATUS_LABEL[s]}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  {updatingStatus && <Box sx={{ textAlign: 'center', mt: 1 }}><CircularProgress size={20} /></Box>}
+                </Box>
+                
+                <Divider sx={{ borderStyle: 'dashed' }} />
+                
+                <Box>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
+                    <Typography variant="body2" fontWeight="bold" color="text.secondary">Ảnh đính kèm:</Typography>
+                    <Typography variant="caption" color="text.primary"><strong>{taskImages.length}</strong> ảnh</Typography>
+                  </Stack>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    onClick={() => setShowImages(!showImages)}
+                    startIcon={showImages ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                    sx={{ borderRadius: 2, textTransform: 'none' }}
+                  >
+                    {showImages ? 'Ẩn danh sách ảnh' : 'Xem danh sách ảnh'}
+                  </Button>
+                </Box>
+              </Stack>
+            </Paper>
+          </Grid>
+
+          {showImages && (
+            <Grid item xs={12}>
+              <Fade in>
+                <Paper sx={{ ...glassStyle, p: 3, mt: 1 }}>
+                  {loadingImages ? (
+                    <Box sx={{ py: 4, textAlign: 'center' }}><CircularProgress size={30} /></Box>
+                  ) : taskImages.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary" textAlign="center">Không có ảnh trong các dataset được gán.</Typography>
+                  ) : (
+                    <ImageList cols={5} gap={16} sx={{ p: 1 }}>
+                      {taskImages.map((img) => (
+                        <ImageListItem key={img.id} sx={{ borderRadius: 2, overflow: 'hidden', boxShadow: 1 }}>
+                          <ImageWithAuth
+                            src={formatImageUrl(img.thumbnail)}
+                            alt={img.name}
+                            sx={{ height: 150, width: '100%', objectFit: 'cover' }}
+                          />
+                          <ImageListItemBar title={img.name} sx={{ '& .MuiImageListItemBar-title': { fontSize: '0.75rem' } }} />
+                        </ImageListItem>
+                      ))}
+                    </ImageList>
+                  )}
+                </Paper>
+              </Fade>
+            </Grid>
+          )}
+        </Grid>
+      </Box>
+    </Fade>
   );
 };
 

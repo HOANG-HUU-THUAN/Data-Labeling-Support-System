@@ -32,3 +32,14 @@ export const assignRoles = async (id: number, roles: string[]): Promise<User> =>
   const response = await axiosInstance.put(`/v1/users/${id}/roles`, { roles }); // Wait, check backend endpoint
   return response.data.data;
 };
+
+export interface UpdateUserRequest {
+  email?: string;
+  password?: string;
+  status?: string;
+}
+
+export const updateUser = async (id: number, data: UpdateUserRequest): Promise<User> => {
+  const response = await axiosInstance.put(`/v1/users/${id}`, data);
+  return response.data.data;
+};
