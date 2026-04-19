@@ -21,4 +21,14 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 
     @EntityGraph(attributePaths = {"project", "assignedAnnotator", "assignedReviewer", "images", "images.dataset"})
     Optional<Task> findById(Long id);
+
+    long countByDeletedFalse();
+    long countByAssignedAnnotatorIsNotNullAndDeletedFalse();
+    long countByStatusAndDeletedFalse(String status);
+
+    long countByAssignedAnnotatorIdAndDeletedFalse(Long userId);
+    long countByAssignedAnnotatorIdAndStatusAndDeletedFalse(Long userId, String status);
+
+    long countByAssignedReviewerIdAndDeletedFalse(Long userId);
+    long countByAssignedReviewerIdAndStatusAndDeletedFalse(Long userId, String status);
 }

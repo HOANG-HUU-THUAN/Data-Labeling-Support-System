@@ -19,6 +19,7 @@ public class UserDetailsImpl implements UserDetails {
     private String username;
     private String email;
     private LocalDateTime createdAt;
+    private String status;
 
     @JsonIgnore 
     private String password;
@@ -26,12 +27,13 @@ public class UserDetailsImpl implements UserDetails {
     // This is Spring Security's standard Role list
     private Collection<? extends GrantedAuthority> authorities;
 
-    public UserDetailsImpl(Long id, String username, String email, String password, LocalDateTime createdAt,
+    public UserDetailsImpl(Long id, String username, String email, String password, String status, LocalDateTime createdAt,
                            Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.password = password;
+        this.status = status;
         this.createdAt = createdAt;
         this.authorities = authorities;
     }
@@ -48,6 +50,7 @@ public class UserDetailsImpl implements UserDetails {
                 user.getUsername(),
                 user.getEmail(),
                 user.getPassword(),
+                user.getStatus(),
                 user.getCreatedAt(),
                 authorities);
     }
@@ -73,13 +76,17 @@ public class UserDetailsImpl implements UserDetails {
     public boolean isAccountNonExpired() { return true; }
 
     @Override
-    public boolean isAccountNonLocked() { return true; }
+    public boolean isAccountNonLocked() {
+        return !"LOCKED".equalsIgnoreCase(status);
+    }
 
     @Override
     public boolean isCredentialsNonExpired() { return true; }
 
     @Override
-    public boolean isEnabled() { return true; }
+    public boolean isEnabled() {
+        return !"LOCKED".equalsIgnoreCase(status);
+    }
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
