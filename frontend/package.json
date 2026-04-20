@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.9",
@@ -23,6 +24,10 @@
     "recharts": "^3.8.1",
     "remark-gfm": "^4.0.1",
     "zustand": "^5.0.12"
+=======
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+>>>>>>> 435e17add2b797d95c507200ca4f75349278c692
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
